@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vshop}
+      POSTGRES_USER: ${POSTGRES_USER:-vshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vshop}
+    ports:
+      # Bind to localhost only — never expose Postgres on all interfaces.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vshop} -d ${POSTGRES_DB:-vshop}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vshop-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vshop}:${POSTGRES_PASSWORD:-vshop}@db:5432/${POSTGRES_DB:-vshop}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head && python -m app.main"
+
+volumes:
+  pgdata:
