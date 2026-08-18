@@ -1,3 +1,12 @@
+# The Compose project name is pinned here on purpose.
+#
+# Without it, Compose derives the project name — and therefore the name of the
+# `pgdata` volume — from whatever directory this file happens to sit in.
+# Deploying from a renamed, moved or freshly cloned directory then silently
+# creates a NEW empty PostgreSQL volume: migrations apply cleanly, the bot
+# starts healthy, and the catalog appears empty. See docs/deployment.md.
+name: vshop
+
 services:
   db:
     image: postgres:16-alpine
@@ -27,6 +36,11 @@ services:
     env_file:
       - .env
     environment:
+      # This DELIBERATELY overrides any DATABASE_URL in `.env`: `environment:`
+      # outranks `env_file:`, and inside the container the database is reachable
+      # as `db:5432`, never as `localhost`. A `DATABASE_URL` in `.env` therefore
+      # applies only to non-Docker runs. The resolved value is logged at startup
+      # so the two can never disagree silently.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vshop}:${POSTGRES_PASSWORD:-vshop}@db:5432/${POSTGRES_DB:-vshop}
     depends_on:
       db:
@@ -36,3 +50,12 @@ services:
 
 volumes:
   pgdata:
+    # Pinned explicitly so the database volume never depends on the project or
+    # directory name.
+    #
+    # UPGRADING AN EXISTING DEPLOYMENT: run `docker volume ls` first. If your
+    # database already lives in a differently named volume (e.g. `v-shop_pgdata`
+    # from a directory called `V-Shop`), set POSTGRES_VOLUME_NAME in `.env` to
+    # that exact name so this stack keeps using it. Do NOT accept the default
+    # until you have checked — that is how existing data gets orphaned.
+    name: ${POSTGRES_VOLUME_NAME:-vshop_pgdata}

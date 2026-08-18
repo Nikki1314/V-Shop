@@ -7,7 +7,12 @@ import logging
 from aiogram import Bot
 
 from app.config import Settings
-from app.database.session import check_db_connection, close_db, init_db
+from app.database.session import (
+    check_db_connection,
+    close_db,
+    init_db,
+    log_database_identity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +23,7 @@ async def on_startup(bot: Bot, settings: Settings) -> None:
 
     - Initialize DB engine / session factory
     - Verify PostgreSQL connectivity
+    - Record which database cluster we attached to (read-only, diagnostic)
     - Drop webhook (long-polling mode)
     - Confirm Telegram authorization via getMe
     """
@@ -25,6 +31,7 @@ async def on_startup(bot: Bot, settings: Settings) -> None:
 
     await init_db()
     await check_db_connection()
+    await log_database_identity()
 
     await bot.delete_webhook(drop_pending_updates=True)
 

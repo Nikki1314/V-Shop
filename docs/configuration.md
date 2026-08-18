@@ -50,6 +50,7 @@ Compose can override DB credentials via:
 | `POSTGRES_USER` | `vshop` | Database user |
 | `POSTGRES_PASSWORD` | `vshop` | Database password |
 | `POSTGRES_PORT` | `5432` | Host port published for Postgres |
+| `POSTGRES_VOLUME_NAME` | `vshop_pgdata` | **Docker volume holding the database.** Set this to your existing volume when upgrading a deployment that predates the pinned name — see [Deployment](deployment.md#upgrading-an-existing-deployment). |
 
 The bot service forces:
 
@@ -58,6 +59,35 @@ DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/
 ```
 
 so the container always talks to the Compose `db` service by hostname.
+
+### `DATABASE_URL` precedence
+
+Compose's `environment:` block outranks `env_file:`, and a real environment
+variable outranks the `.env` file inside Pydantic Settings. The consequence:
+
+| Launch mode | `DATABASE_URL` in effect |
+|---|---|
+| `docker compose up` | `…@db:5432/…` from `docker-compose.yml` — the `.env` value is ignored |
+| `python -m app.main` on the host | the `.env` value |
+
+These are **different databases** unless the host URL happens to point at the
+same Postgres. Pick one launch mode per environment. The value actually in use
+is logged at startup (`Database identity: url=…`), so a mismatch is visible in
+the first few log lines rather than as missing data.
+
+## Project and volume naming
+
+`docker-compose.yml` pins both:
+
+```yaml
+name: vshop                                        # Compose project
+volumes:
+  pgdata:
+    name: ${POSTGRES_VOLUME_NAME:-vshop_pgdata}    # actual Docker volume
+```
+
+Without these, Compose derives both from the *directory name*, so deploying the
+same code from `/opt/vshop` and `/opt/V-Shop` uses two different databases.
 
 ## Example `.env` (local Docker)
 
