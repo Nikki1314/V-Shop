@@ -8,10 +8,13 @@ class AddProductStates(StatesGroup):
     name_ru = State()
     name_en = State()
     name_de = State()
+    name_uk = State()
     description_ru = State()
     description_en = State()
     description_de = State()
+    description_uk = State()
     category = State()
+    subcategory = State()
     flavor = State()
     volume = State()
     nicotine_strength = State()
@@ -24,10 +27,13 @@ class EditProductStates(StatesGroup):
     name_ru = State()
     name_en = State()
     name_de = State()
+    name_uk = State()
     description_ru = State()
     description_en = State()
     description_de = State()
+    description_uk = State()
     category = State()
+    subcategory = State()
     flavor = State()
     volume = State()
     nicotine_strength = State()
@@ -43,13 +49,36 @@ class EditDescriptionStates(StatesGroup):
     description_ru = State()
     description_en = State()
     description_de = State()
+    description_uk = State()
 
 
 class CreateCategoryStates(StatesGroup):
-    name = State()
+    """Four-language category creation."""
+
+    name_ru = State()
+    name_en = State()
+    name_de = State()
+    name_uk = State()
 
 
 class RenameCategoryStates(StatesGroup):
+    """Edit one localized category name; the language lives in FSM data."""
+
+    name = State()
+
+
+class CreateSubcategoryStates(StatesGroup):
+    """Four-language brand creation."""
+
+    name_ru = State()
+    name_en = State()
+    name_de = State()
+    name_uk = State()
+
+
+class RenameSubcategoryStates(StatesGroup):
+    """Edit one localized brand name; the language lives in FSM data."""
+
     name = State()
 
 
@@ -75,15 +104,21 @@ CATEGORY_WIZARD_STATES = (
     RenameCategoryStates,
 )
 
+SUBCATEGORY_WIZARD_STATES = (
+    CreateSubcategoryStates,
+    RenameSubcategoryStates,
+)
+
 ORDER_WIZARD_STATES = (SearchOrderStates,)
 
 BROADCAST_WIZARD_STATES = (BroadcastStates,)
 
 # Exclude reply-menu handlers while any admin wizard is active.
+# A new wizard MUST be registered here or menu taps will corrupt its state.
 ADMIN_WIZARD_STATES = (
     PRODUCT_WIZARD_STATES
     + CATEGORY_WIZARD_STATES
+    + SUBCATEGORY_WIZARD_STATES
     + ORDER_WIZARD_STATES
     + BROADCAST_WIZARD_STATES
 )
-

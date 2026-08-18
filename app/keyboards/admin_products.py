@@ -7,7 +7,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
 )
 
-from app.models.category import Category
+from app.models.category import Category, Subcategory
 from app.models.product import Product
 from app.services.localization import LocalizationService
 from app.utils.product_display import localized_product_name
@@ -27,6 +27,8 @@ CALLBACK_PRODUCT_DELETE_PREFIX = "admin:product:del:"
 CALLBACK_PRODUCT_DELETE_OK_PREFIX = "admin:product:delok:"
 CALLBACK_PRODUCT_CAT_PREFIX = "admin:product:cat:"
 CALLBACK_PRODUCT_EDIT_CAT_PREFIX = "admin:product:ecat:"
+CALLBACK_PRODUCT_SUB_PREFIX = "admin:product:sub:"
+CALLBACK_PRODUCT_EDIT_SUB_PREFIX = "admin:product:esub:"
 CALLBACK_PRODUCT_CONFIRM = "admin:product:confirm"
 CALLBACK_PRODUCT_EDIT_CONFIRM = "admin:product:econfirm"
 CALLBACK_PRODUCT_CANCEL = "admin:product:cancel"
@@ -51,10 +53,6 @@ def products_actions_keyboard(i18n: LocalizationService) -> InlineKeyboardMarkup
             ],
         ]
     )
-
-
-# Re-export shared admin reply keyboards for backward-compatible imports.
-from app.keyboards.admin import admin_cancel_keyboard, admin_cancel_skip_keyboard  # noqa: E402
 
 
 def admin_category_pick_keyboard(
@@ -235,5 +233,24 @@ def product_delete_confirm_keyboard(
                     callback_data=f"{CALLBACK_PRODUCT_LIST_PREFIX}{page}",
                 )
             ],
+        ]
+    )
+
+
+def admin_subcategory_pick_keyboard(
+    subcategories: list[Subcategory],
+    *,
+    prefix: str = CALLBACK_PRODUCT_SUB_PREFIX,
+) -> InlineKeyboardMarkup:
+    """Brand picker; only brands of the already-chosen category are passed in."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=truncate_button_label(sub.name_ru),
+                    callback_data=f"{prefix}{sub.id}",
+                )
+            ]
+            for sub in subcategories
         ]
     )

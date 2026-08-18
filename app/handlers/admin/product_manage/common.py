@@ -45,9 +45,15 @@ EDIT_TEXT_STEPS: dict[Any, tuple[str, Any, str, str]] = {
     ),
     EditProductStates.name_de: (
         "name_de",
-        EditProductStates.description_ru,
+        EditProductStates.name_uk,
         "admin.product_ask_name_de_edit",
         "name_de",
+    ),
+    EditProductStates.name_uk: (
+        "name_uk",
+        EditProductStates.description_ru,
+        "admin.product_ask_name_uk_edit",
+        "name_uk",
     ),
     EditProductStates.description_ru: (
         "description_ru",
@@ -63,9 +69,15 @@ EDIT_TEXT_STEPS: dict[Any, tuple[str, Any, str, str]] = {
     ),
     EditProductStates.description_de: (
         "description_de",
-        EditProductStates.category,
+        EditProductStates.description_uk,
         "admin.product_ask_description_de_edit",
         "description_de",
+    ),
+    EditProductStates.description_uk: (
+        "description_uk",
+        EditProductStates.category,
+        "admin.product_ask_description_uk_edit",
+        "description_uk",
     ),
     EditProductStates.flavor: (
         "flavor",
@@ -91,6 +103,7 @@ EDIT_TEXT_STEPS: dict[Any, tuple[str, Any, str, str]] = {
 EDIT_NEXT_PROMPTS: dict[Any, tuple[str, str]] = {
     EditProductStates.name_en: ("admin.product_ask_name_en_edit", "name_en"),
     EditProductStates.name_de: ("admin.product_ask_name_de_edit", "name_de"),
+    EditProductStates.name_uk: ("admin.product_ask_name_uk_edit", "name_uk"),
     EditProductStates.description_ru: (
         "admin.product_ask_description_ru_edit",
         "description_ru",
@@ -102,6 +115,10 @@ EDIT_NEXT_PROMPTS: dict[Any, tuple[str, str]] = {
     EditProductStates.description_de: (
         "admin.product_ask_description_de_edit",
         "description_de",
+    ),
+    EditProductStates.description_uk: (
+        "admin.product_ask_description_uk_edit",
+        "description_uk",
     ),
     EditProductStates.flavor: ("admin.product_ask_flavor_edit", "flavor"),
     EditProductStates.volume: ("admin.product_ask_volume_edit", "volume"),
@@ -216,6 +233,12 @@ def product_snapshot(product: Product) -> dict[str, Any]:
         "description_ru": product.description_ru,
         "description_en": product.description_en,
         "description_de": product.description_de,
+        "name_uk": product.name_uk,
+        "description_uk": product.description_uk,
+        "subcategory_id": product.subcategory_id,
+        "subcategory_name": (
+            product.subcategory.name_ru if product.subcategory is not None else "—"
+        ),
         "flavor": product.flavor,
         "volume": product.volume,
         "nicotine_strength": product.nicotine_strength,
@@ -234,6 +257,9 @@ def build_edit_preview(i18n: LocalizationService, data: dict[str, Any]) -> str:
         name_de=data["name_de"],
         description_ru=data["description_ru"],
         description_en=data["description_en"],
+        name_uk=data["name_uk"],
+        description_uk=data["description_uk"],
+        subcategory=data.get("subcategory_name", "—"),
         description_de=data["description_de"],
         category=data.get("category_name", data["category_id"]),
         flavor=data["flavor"],

@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.category import Category, Subcategory
 from app.models.product import Product
 from app.repositories.base import BaseRepository
 
@@ -23,7 +24,10 @@ class ProductRepository(BaseRepository[Product]):
         result = await self.session.scalars(
             select(Product)
             .where(Product.id == product_id)
-            .options(selectinload(Product.category))
+            .options(
+                selectinload(Product.category),
+                selectinload(Product.subcategory),
+            )
         )
         return result.first()
 
@@ -87,6 +91,95 @@ class ProductRepository(BaseRepository[Product]):
         )
         return int(result or 0)
 
+    async def list_by_subcategory(
+        self,
+        subcategory_id: int,
+        *,
+        active_only: bool = True,
+    ) -> list[Product]:
+        stmt = select(Product).where(Product.subcategory_id == subcategory_id)
+        if active_only:
+            stmt = stmt.where(Product.is_active.is_(True))
+        result = await self.session.scalars(stmt.order_by(Product.id.asc()))
+        return list(result.all())
+
+    async def list_visible_by_subcategory(self, subcategory_id: int) -> list[Product]:
+        """
+        Customer-visible products in a brand.
+
+        Joins both parents: an active product under a deactivated brand — or a
+        deactivated category — must not reach a customer.
+        """
+        result = await self.session.scalars(
+            select(Product)
+            .join(Subcategory, Subcategory.id == Product.subcategory_id)
+            .join(Category, Category.id == Subcategory.category_id)
+            .where(
+                Product.subcategory_id == subcategory_id,
+                Product.is_active.is_(True),
+                Subcategory.is_active.is_(True),
+                Category.is_active.is_(True),
+            )
+            .order_by(Product.id.asc())
+        )
+        return list(result.all())
+
+    async def get_visible_by_id(self, product_id: int) -> Product | None:
+        """A product a customer may open: active all the way up the hierarchy."""
+        result = await self.session.scalars(
+            select(Product)
+            .join(Subcategory, Subcategory.id == Product.subcategory_id)
+            .join(Category, Category.id == Subcategory.category_id)
+            .where(
+                Product.id == product_id,
+                Product.is_active.is_(True),
+                Subcategory.is_active.is_(True),
+                Category.is_active.is_(True),
+            )
+            .options(selectinload(Product.subcategory))
+        )
+        return result.first()
+
+    async def list_with_parents(
+        self,
+        *,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> list[Product]:
+        """Admin listing with both parents eagerly loaded (no N+1 on render)."""
+        stmt = (
+            select(Product)
+            .options(
+                selectinload(Product.category),
+                selectinload(Product.subcategory).selectinload(Subcategory.category),
+            )
+            .order_by(Product.id.asc())
+            .offset(offset)
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        result = await self.session.scalars(stmt)
+        return list(result.all())
+
+    async def move_to_subcategory(self, product: Product, subcategory_id: int) -> Product:
+        """Reassign a product to another brand, keeping the legacy link in step."""
+        subcategory = await self.session.get(Subcategory, subcategory_id)
+        if subcategory is None:
+            raise ValueError(f"Subcategory {subcategory_id} does not exist")
+        return await self.update(
+            product,
+            subcategory_id=subcategory_id,
+            category_id=subcategory.category_id,
+        )
+
+    async def count_by_subcategory(self, subcategory_id: int) -> int:
+        result = await self.session.scalar(
+            select(func.count())
+            .select_from(Product)
+            .where(Product.subcategory_id == subcategory_id)
+        )
+        return int(result or 0)
+
     async def create_product(
         self,
         *,
@@ -101,17 +194,30 @@ class ProductRepository(BaseRepository[Product]):
         volume: str,
         nicotine_strength: str,
         price: Decimal | str | float,
+        subcategory_id: int | None = None,
+        name_uk: str | None = None,
+        description_uk: str | None = None,
         image_file_id: str | None = None,
         is_active: bool = True,
     ) -> Product:
+        """
+        Create a product.
+
+        Ukrainian fields fall back to the Russian text when not supplied, so
+        callers that predate the four-language catalog keep working and never
+        write NULLs. Those fallbacks are placeholders for admin review.
+        """
         return await self.create_and_add(
+            subcategory_id=subcategory_id,
             category_id=category_id,
             name_ru=name_ru,
             name_en=name_en,
             name_de=name_de,
+            name_uk=name_uk or name_ru,
             description_ru=description_ru,
             description_en=description_en,
             description_de=description_de,
+            description_uk=description_uk or description_ru,
             flavor=flavor,
             volume=volume,
             nicotine_strength=nicotine_strength,

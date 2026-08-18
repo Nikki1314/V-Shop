@@ -18,3 +18,14 @@ class TimestampMixin:
         server_default=func.now(),
         nullable=False,
     )
+
+
+class UpdatedAtMixin:
+    """Adds a self-maintaining updated_at timestamp (catalog entities)."""
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

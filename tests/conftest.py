@@ -59,7 +59,14 @@ async def user(session: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def category(session: AsyncSession) -> Category:
-    entity = Category(name="Liquids", sort_order=0)
+    entity = Category(
+        name="Liquids",
+        name_ru="Жидкости",
+        name_en="Liquids",
+        name_de="Liquids",
+        name_uk="Рідини",
+        sort_order=0,
+    )
     session.add(entity)
     await session.flush()
     return entity
@@ -72,9 +79,11 @@ async def product(session: AsyncSession, category: Category) -> Product:
         name_ru="Тест",
         name_en="Test Juice",
         name_de="Test Saft",
+        name_uk="Тестовий сік",
         description_ru="Описание",
         description_en="Description",
         description_de="Beschreibung",
+        description_uk="Опис",
         flavor="Mango",
         volume="30ml",
         nicotine_strength="3mg",

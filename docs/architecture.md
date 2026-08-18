@@ -95,10 +95,29 @@ Handlers may use the façade or focused services.
 
 ## Localization
 
-- Files: `app/locales/{en,ru,de}.json`
+- Files: `app/locales/{en,ru,de,uk}.json` — four languages, identical key sets
 - Keys flattened to dotted paths (`menu.catalog`)
 - `LocalizationService.t(key, **kwargs)` formats strings
 - Menu buttons matched via `LocalizedText` against all language variants
+- Product names/descriptions are per-language **columns**, resolved by
+  `app/utils/product_display.py` — distinct from the locale catalogs
+
+### Localization policy
+
+Every **customer-facing** string goes through `i18n.t()`. Enforced by
+`tests/test_localization_audit.py`, which fails the build if a referenced key is
+missing, if the catalogs drift apart, or if a handler/keyboard passes a literal
+string to Telegram.
+
+**Documented exception — the manager/ops order alert.**
+`app/services/notification.py` builds its field labels in English on purpose, and
+`app/utils/labels.py` provides `city_label_en` / `delivery_label_en` for it. The
+alert's primary destination is `MANAGER_CHAT_ID`, a single shared chat delivered
+to every member at once, so there is no per-recipient language to resolve; a
+fixed format also lets staff parse alerts at speed. Both modules carry an
+`INTENTIONALLY NOT LOCALIZED` marker, and the audit test asserts that marker is
+present. Customer-facing city/delivery labels use the localized
+`city_label()` / `delivery_label()` in the same module.
 
 ## Concurrency & caching
 

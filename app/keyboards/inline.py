@@ -40,6 +40,12 @@ def language_keyboard(i18n: LocalizationService | None = None) -> InlineKeyboard
                     callback_data=f"lang:{LanguageCode.DE.value}",
                 )
             ],
+            [
+                InlineKeyboardButton(
+                    text=locator.t("language.uk"),
+                    callback_data=f"lang:{LanguageCode.UK.value}",
+                )
+            ],
         ]
     )
 

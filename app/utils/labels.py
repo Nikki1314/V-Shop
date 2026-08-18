@@ -17,7 +17,10 @@ _DELIVERY_I18N_KEYS = {
     DeliveryType.SERVICE.value: "checkout.delivery_service",
 }
 
-# English labels for manager notifications (admin-facing, not user locale).
+# INTENTIONALLY NOT LOCALIZED: fixed English labels for the manager/ops order
+# notification, which is delivered to one shared chat and therefore cannot carry
+# a per-recipient language. See app/services/notification.py for the rationale.
+# Customer-facing city/delivery labels use city_label() / delivery_label() below.
 _CITY_LABELS_EN = {
     CityChoice.BERLIN.value: "Berlin",
     CityChoice.DELIVERY.value: "Other cities (Delivery)",

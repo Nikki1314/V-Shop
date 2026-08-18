@@ -39,7 +39,14 @@ async def make_category(
     name: str = "Category",
     sort_order: int = 0,
 ) -> Category:
-    category = Category(name=name, sort_order=sort_order)
+    category = Category(
+        name=name,
+        name_ru=name,
+        name_en=name,
+        name_de=name,
+        name_uk=name,
+        sort_order=sort_order,
+    )
     session.add(category)
     await session.flush()
     return category
@@ -58,9 +65,11 @@ async def make_product(
         name_ru=name_en,
         name_en=name_en,
         name_de=name_en,
+        name_uk=name_en,
         description_ru="d",
         description_en="d",
         description_de="d",
+        description_uk="d",
         flavor="flavor",
         volume="30ml",
         nicotine_strength="0mg",

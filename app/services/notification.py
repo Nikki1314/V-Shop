@@ -1,4 +1,25 @@
-"""Order notification service — alert managers/admins about new orders."""
+"""Order notification service — alert managers/admins about new orders.
+
+LOCALIZATION POLICY — INTENTIONALLY NOT LOCALIZED.
+
+The field labels in :meth:`OrderNotificationService.format_new_order_message`
+are deliberately hardcoded English and must NOT be moved into the locale
+catalogs. Reasons:
+
+* The primary destination is ``MANAGER_CHAT_ID`` — a single shared operations
+  chat. One message is delivered to every member, so there is no per-recipient
+  language to resolve; picking one stable language is the only coherent option.
+* Staff parse these alerts at speed. A fixed format is more valuable
+  operationally than translation, and avoids the same order appearing in two
+  languages depending on which admin reads it.
+* Companion helpers ``city_label_en`` / ``delivery_label_en`` in
+  ``app.utils.labels`` exist solely to serve this policy.
+
+Everything the CUSTOMER sees is localized and must stay that way — see
+``docs/architecture.md`` (Localization policy). If per-admin localization of
+the private-chat copies is ever wanted, localize there only and leave the
+group message in the operations language.
+"""
 
 from __future__ import annotations
 
@@ -47,7 +68,11 @@ class OrderNotificationService:
         *,
         telegram_username: str | None = None,
     ) -> str:
-        """Build a readable HTML notification for managers."""
+        """
+        Build a readable HTML notification for managers.
+
+        Staff-facing and intentionally English — see the module docstring.
+        """
         username = (
             f"@{escape(telegram_username)}"
             if telegram_username

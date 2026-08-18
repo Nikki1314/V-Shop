@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.models.category import Category
 from app.services.localization import LocalizationService
+from app.utils.telegram_ui import truncate_button_label
 
 CALLBACK_CATEGORY_CREATE = "admin:cat:create"
 CALLBACK_CATEGORY_LIST = "admin:cat:list"
@@ -16,6 +17,25 @@ CALLBACK_CATEGORY_DELETE_OK_PREFIX = "admin:cat:delok:"
 CALLBACK_CATEGORY_UP_PREFIX = "admin:cat:up:"
 CALLBACK_CATEGORY_DOWN_PREFIX = "admin:cat:down:"
 CALLBACK_CATEGORY_CANCEL = "admin:cat:cancel"
+CALLBACK_CATEGORY_TOGGLE_PREFIX = "admin:cat:act:"  # admin:cat:act:{id}
+CALLBACK_CATEGORY_EDIT_PREFIX = "admin:cat:edit:"  # language picker
+CALLBACK_CATEGORY_NAME_PREFIX = "admin:cat:name:"  # admin:cat:name:{id}:{lang}
+
+# Locale keys for the four supported languages, in display order.
+LANGUAGE_KEYS: tuple[tuple[str, str], ...] = (
+    ("ru", "language.ru"),
+    ("en", "language.en"),
+    ("de", "language.de"),
+    ("uk", "language.uk"),
+)
+
+
+def _status_mark(i18n: LocalizationService, category: Category) -> str:
+    return i18n.t(
+        "admin.category_status_active"
+        if category.is_active
+        else "admin.category_status_inactive"
+    )
 
 
 def categories_actions_keyboard(i18n: LocalizationService) -> InlineKeyboardMarkup:
@@ -44,7 +64,9 @@ def categories_admin_list_keyboard(
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text=f"#{index + 1} {category.name}",
+                text=truncate_button_label(
+                    f"{_status_mark(i18n, category)} {category.name_ru}"
+                ),
                 callback_data=f"{CALLBACK_CATEGORY_VIEW_PREFIX}{category.id}",
             )
         ]
@@ -67,6 +89,7 @@ def category_manage_keyboard(
     *,
     index: int,
     total: int,
+    subcategory_count: int = 0,
 ) -> InlineKeyboardMarkup:
     cid = category.id
     move_row: list[InlineKeyboardButton] = []
@@ -88,8 +111,24 @@ def category_manage_keyboard(
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text=i18n.t("admin.category_rename"),
-                callback_data=f"{CALLBACK_CATEGORY_RENAME_PREFIX}{cid}",
+                text=i18n.t("admin.category_edit_names"),
+                callback_data=f"{CALLBACK_CATEGORY_EDIT_PREFIX}{cid}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=i18n.t("admin.category_brands", count=subcategory_count),
+                callback_data=f"admin:sub:list:{cid}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=i18n.t(
+                    "admin.category_deactivate"
+                    if category.is_active
+                    else "admin.category_activate"
+                ),
+                callback_data=f"{CALLBACK_CATEGORY_TOGGLE_PREFIX}{cid}",
             )
         ],
     ]
@@ -134,3 +173,28 @@ def category_delete_confirm_keyboard(
             ],
         ]
     )
+
+
+def category_language_keyboard(
+    i18n: LocalizationService,
+    category_id: int,
+) -> InlineKeyboardMarkup:
+    """Pick which localized category name to edit."""
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=i18n.t(key),
+                callback_data=f"{CALLBACK_CATEGORY_NAME_PREFIX}{category_id}:{code}",
+            )
+        ]
+        for code, key in LANGUAGE_KEYS
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=i18n.t("common.back"),
+                callback_data=f"{CALLBACK_CATEGORY_VIEW_PREFIX}{category_id}",
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)

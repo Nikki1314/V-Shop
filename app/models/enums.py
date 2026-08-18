@@ -7,6 +7,7 @@ class LanguageCode(StrEnum):
     RU = "ru"
     EN = "en"
     DE = "de"
+    UK = "uk"
 
 
 class CityChoice(StrEnum):

@@ -7,6 +7,7 @@ import logging
 from aiogram import F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,13 +19,17 @@ from app.keyboards.admin_categories import (
     CALLBACK_CATEGORY_DELETE_OK_PREFIX,
     CALLBACK_CATEGORY_DELETE_PREFIX,
     CALLBACK_CATEGORY_DOWN_PREFIX,
+    CALLBACK_CATEGORY_EDIT_PREFIX,
     CALLBACK_CATEGORY_LIST,
+    CALLBACK_CATEGORY_NAME_PREFIX,
     CALLBACK_CATEGORY_RENAME_PREFIX,
+    CALLBACK_CATEGORY_TOGGLE_PREFIX,
     CALLBACK_CATEGORY_UP_PREFIX,
     CALLBACK_CATEGORY_VIEW_PREFIX,
     categories_actions_keyboard,
     categories_admin_list_keyboard,
     category_delete_confirm_keyboard,
+    category_language_keyboard,
     category_manage_keyboard,
 )
 from app.models.category import Category
@@ -35,12 +40,28 @@ from app.states.admin import (
     CreateCategoryStates,
     RenameCategoryStates,
 )
+from app.utils.html import e
 from app.utils.telegram_ui import edit_or_answer
 from app.utils.validators import nonempty, parse_callback_id
 
 logger = logging.getLogger(__name__)
 
 router = Router(name="admin_categories")
+
+CREATE_STEPS: tuple[tuple[State, str, str], ...] = (
+    (CreateCategoryStates.name_ru, "name_ru", "admin.category_ask_name_ru"),
+    (CreateCategoryStates.name_en, "name_en", "admin.category_ask_name_en"),
+    (CreateCategoryStates.name_de, "name_de", "admin.category_ask_name_de"),
+    (CreateCategoryStates.name_uk, "name_uk", "admin.category_ask_name_uk"),
+)
+
+LANGUAGE_FIELDS = {"ru": "name_ru", "en": "name_en", "de": "name_de", "uk": "name_uk"}
+
+
+def _chat_message(callback: CallbackQuery) -> Message | None:
+    """Narrow ``callback.message`` to a usable ``Message`` (never Inaccessible)."""
+    message = callback.message
+    return message if isinstance(message, Message) else None
 
 
 async def _cancel_category_wizard(
@@ -96,12 +117,23 @@ async def _send_category_view(
         return
 
     product_count = await admin.count_category_products(category.id)
+    subcategory_count = len(await admin.list_subcategories(category.id))
+    status = i18n.t(
+        "admin.category_status_active"
+        if category.is_active
+        else "admin.category_status_inactive"
+    )
     text = i18n.t(
         "admin.category_card",
         category_id=category.id,
-        name=category.name,
+        status=status,
+        name_ru=e(category.name_ru),
+        name_en=e(category.name_en),
+        name_de=e(category.name_de),
+        name_uk=e(category.name_uk),
         position=index + 1,
         total=len(categories),
+        subcategories=subcategory_count,
         products=product_count,
     )
     markup = category_manage_keyboard(
@@ -109,6 +141,7 @@ async def _send_category_view(
         category,
         index=index,
         total=len(categories),
+        subcategory_count=subcategory_count,
     )
     if edit:
         try:
@@ -191,14 +224,15 @@ async def start_create_category(
     await callback.answer()
     if callback.message is None:
         return
-    await state.set_state(CreateCategoryStates.name)
+    await state.clear()
+    await state.set_state(CreateCategoryStates.name_ru)
     await callback.message.answer(
-        i18n.t("admin.category_ask_name"),
+        i18n.t("admin.category_ask_name_ru"),
         reply_markup=admin_cancel_keyboard(i18n),
     )
 
 
-@router.message(StateFilter(CreateCategoryStates.name), LocalizedText("common.cancel"))
+@router.message(StateFilter(CreateCategoryStates), LocalizedText("common.cancel"))
 @router.message(StateFilter(RenameCategoryStates.name), LocalizedText("common.cancel"))
 async def cancel_category_wizard_message(
     message: Message,
@@ -223,13 +257,19 @@ async def cancel_category_wizard_callback(
     await _cancel_category_wizard(callback.message, i18n, state)
 
 
-@router.message(StateFilter(CreateCategoryStates.name), F.text)
+@router.message(StateFilter(CreateCategoryStates), F.text)
 async def process_create_category(
     message: Message,
     i18n: LocalizationService,
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
+    """Walk the four localized names, then persist once."""
+    current = await state.get_state()
+    step = next((s for s in CREATE_STEPS if s[0].state == current), None)
+    if step is None:
+        return
+
     name = nonempty(message.text, min_len=1, max_len=255)
     if name is None:
         await message.answer(
@@ -238,22 +278,142 @@ async def process_create_category(
         )
         return
 
-    admin = AdminService(session)
-    existing = await admin.get_category_by_name(name)
-    if existing is not None:
+    _, field, _ = step
+    if field == "name_ru":
+        existing = await AdminService(session).get_category_by_name(name)
+        if existing is not None:
+            await message.answer(
+                i18n.t("admin.category_name_exists"),
+                reply_markup=admin_cancel_keyboard(i18n),
+            )
+            return
+
+    await state.update_data({field: name})
+    position = CREATE_STEPS.index(step)
+    if position + 1 < len(CREATE_STEPS):
+        next_state, _, prompt_key = CREATE_STEPS[position + 1]
+        await state.set_state(next_state)
         await message.answer(
-            i18n.t("admin.category_name_exists"),
-            reply_markup=admin_cancel_keyboard(i18n),
+            i18n.t(prompt_key), reply_markup=admin_cancel_keyboard(i18n)
         )
         return
 
-    category = await admin.create_category(name)
+    data = await state.get_data()
+    category = await AdminService(session).create_category(
+        str(data["name_ru"]),
+        name_ru=str(data["name_ru"]),
+        name_en=str(data["name_en"]),
+        name_de=str(data["name_de"]),
+        name_uk=str(data["name_uk"]),
+    )
+    await session.flush()
     await state.clear()
+    logger.info("Admin created category id=%s", category.id)
     await message.answer(
-        i18n.t("admin.category_created", name=category.name, category_id=category.id),
+        i18n.t(
+            "admin.category_created",
+            name=e(category.name_ru),
+            category_id=category.id,
+        ),
         reply_markup=admin_menu_keyboard(i18n),
     )
     await _send_category_view(message, i18n, session, category)
+
+
+# ---------------------------------------------------------------------------
+# Activate / deactivate
+# ---------------------------------------------------------------------------
+
+
+@router.callback_query(F.data.startswith(CALLBACK_CATEGORY_TOGGLE_PREFIX))
+async def toggle_category_active(
+    callback: CallbackQuery,
+    i18n: LocalizationService,
+    session: AsyncSession,
+) -> None:
+    message = _chat_message(callback)
+    category_id = parse_callback_id(callback.data, CALLBACK_CATEGORY_TOGGLE_PREFIX)
+    if message is None or category_id is None:
+        await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
+        return
+
+    admin = AdminService(session)
+    category = await admin.get_category(category_id)
+    if category is None:
+        await callback.answer(i18n.t("admin.category_not_found"), show_alert=True)
+        return
+
+    new_state = not category.is_active
+    await admin.set_category_active(category, new_state)
+    await session.flush()
+    logger.info("Admin set category id=%s active=%s", category_id, new_state)
+
+    key = "admin.category_activated" if new_state else "admin.category_deactivated"
+    await callback.answer()
+    await message.answer(i18n.t(key, name=e(category.name_ru)))
+    await _send_category_view(message, i18n, session, category, edit=True)
+
+
+# ---------------------------------------------------------------------------
+# Edit localized names
+# ---------------------------------------------------------------------------
+
+
+@router.callback_query(F.data.startswith(CALLBACK_CATEGORY_EDIT_PREFIX))
+async def pick_category_language(
+    callback: CallbackQuery,
+    i18n: LocalizationService,
+    session: AsyncSession,
+) -> None:
+    message = _chat_message(callback)
+    category_id = parse_callback_id(callback.data, CALLBACK_CATEGORY_EDIT_PREFIX)
+    if message is None or category_id is None:
+        await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
+        return
+    if await AdminService(session).get_category(category_id) is None:
+        await callback.answer(i18n.t("admin.category_not_found"), show_alert=True)
+        return
+    await callback.answer()
+    await message.edit_text(
+        i18n.t("admin.category_pick_language"),
+        reply_markup=category_language_keyboard(i18n, category_id),
+    )
+
+
+@router.callback_query(F.data.startswith(CALLBACK_CATEGORY_NAME_PREFIX))
+async def start_edit_category_name(
+    callback: CallbackQuery,
+    state: FSMContext,
+    i18n: LocalizationService,
+    session: AsyncSession,
+) -> None:
+    message = _chat_message(callback)
+    if callback.data is None or message is None:
+        await callback.answer()
+        return
+    raw = callback.data.removeprefix(CALLBACK_CATEGORY_NAME_PREFIX).split(":")
+    if len(raw) != 2 or not raw[0].isdigit() or raw[1] not in LANGUAGE_FIELDS:
+        await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
+        return
+    category_id, language = int(raw[0]), raw[1]
+
+    category = await AdminService(session).get_category(category_id)
+    if category is None:
+        await callback.answer(i18n.t("admin.category_not_found"), show_alert=True)
+        return
+
+    await state.clear()
+    await state.update_data(category_id=category_id, language=language)
+    await state.set_state(RenameCategoryStates.name)
+    await callback.answer()
+    await message.answer(
+        i18n.t(
+            "admin.category_ask_name_lang",
+            language=i18n.t(f"language.{language}"),
+            current=e(getattr(category, LANGUAGE_FIELDS[language])),
+        ),
+        reply_markup=admin_cancel_keyboard(i18n),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -307,6 +467,7 @@ async def process_rename_category(
         return
 
     data = await state.get_data()
+    language = str(data.get("language") or "ru")
     admin = AdminService(session)
     category = await admin.get_category(int(data["category_id"]))
     if category is None:
@@ -318,17 +479,21 @@ async def process_rename_category(
         return
 
     existing = await admin.get_category_by_name(name)
-    if existing is not None and existing.id != category.id:
+    if language == "ru" and existing is not None and existing.id != category.id:
         await message.answer(
             i18n.t("admin.category_name_exists"),
             reply_markup=admin_cancel_keyboard(i18n),
         )
         return
 
-    category = await admin.rename_category(category, name)
+    await admin.set_category_names(category, **{LANGUAGE_FIELDS[language]: name})
+    await session.flush()
     await state.clear()
     await message.answer(
-        i18n.t("admin.category_renamed", name=category.name),
+        i18n.t(
+            "admin.category_name_updated",
+            language=i18n.t(f"language.{language}"),
+        ),
         reply_markup=admin_menu_keyboard(i18n),
     )
     await _send_category_view(message, i18n, session, category)
@@ -386,7 +551,16 @@ async def confirm_delete_category(
     name = category.name
     try:
         await admin.delete_category(category)
-    except CategoryInUseError:
+    except CategoryInUseError as exc:
+        if "subcategory" in str(exc):
+            await callback.answer(
+                i18n.t(
+                    "admin.category_delete_has_subcategories",
+                    count=len(await admin.list_subcategories(category_id)),
+                ),
+                show_alert=True,
+            )
+            return
         await callback.message.answer(i18n.t("admin.category_delete_in_use"))
         category = await admin.get_category(category_id)
         if category is not None:
@@ -452,7 +626,7 @@ async def move_category_down(
     await _send_category_view(callback.message, i18n, session, category, edit=True)
 
 
-@router.message(StateFilter(CreateCategoryStates.name))
+@router.message(StateFilter(CreateCategoryStates))
 async def process_create_category_invalid(
     message: Message,
     i18n: LocalizationService,

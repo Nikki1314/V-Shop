@@ -18,14 +18,18 @@ from app.keyboards.admin_products import (
     CALLBACK_PRODUCT_CANCEL,
     CALLBACK_PRODUCT_CAT_PREFIX,
     CALLBACK_PRODUCT_CONFIRM,
+    CALLBACK_PRODUCT_SUB_PREFIX,
     admin_category_pick_keyboard,
     admin_product_confirm_keyboard,
+    admin_subcategory_pick_keyboard,
     products_actions_keyboard,
 )
+from app.models.category import Category
 from app.services.admin import AdminService
 from app.services.localization import LocalizationService
 from app.states.admin import ADMIN_WIZARD_STATES, AddProductStates
 from app.utils.confirm import confirm_once
+from app.utils.html import e
 from app.utils.telegram_ui import clear_inline_markup
 from app.utils.validators import nonempty, parse_positive_int, parse_price
 
@@ -39,6 +43,11 @@ _TEXT_STEPS: dict[Any, tuple[str, Any, str | None]] = {
     AddProductStates.name_en: ("name_en", AddProductStates.name_de, "admin.product_ask_name_de"),
     AddProductStates.name_de: (
         "name_de",
+        AddProductStates.name_uk,
+        "admin.product_ask_name_uk",
+    ),
+    AddProductStates.name_uk: (
+        "name_uk",
         AddProductStates.description_ru,
         "admin.product_ask_description_ru",
     ),
@@ -52,7 +61,12 @@ _TEXT_STEPS: dict[Any, tuple[str, Any, str | None]] = {
         AddProductStates.description_de,
         "admin.product_ask_description_de",
     ),
-    AddProductStates.description_de: ("description_de", AddProductStates.category, None),
+    AddProductStates.description_de: (
+        "description_de",
+        AddProductStates.description_uk,
+        "admin.product_ask_description_uk",
+    ),
+    AddProductStates.description_uk: ("description_uk", AddProductStates.category, None),
     AddProductStates.flavor: ("flavor", AddProductStates.volume, "admin.product_ask_volume"),
     AddProductStates.volume: (
         "volume",
@@ -76,12 +90,21 @@ def _build_preview(i18n: LocalizationService, data: dict[str, Any]) -> str:
         description_ru=data["description_ru"],
         description_en=data["description_en"],
         description_de=data["description_de"],
+        name_uk=data["name_uk"],
+        description_uk=data["description_uk"],
         category=data.get("category_name", data["category_id"]),
+        subcategory=data.get("subcategory_name", "—"),
         flavor=data["flavor"],
         volume=data["volume"],
         nicotine=data["nicotine_strength"],
         price=data["price"],
     )
+
+
+def _chat_message(callback: CallbackQuery) -> Message | None:
+    """Narrow ``callback.message`` to a usable ``Message`` (never Inaccessible)."""
+    message = callback.message
+    return message if isinstance(message, Message) else None
 
 
 async def _cancel_wizard(
@@ -101,6 +124,34 @@ async def _ask_photo(message: Message, i18n: LocalizationService, state: FSMCont
     await message.answer(
         i18n.t("admin.product_ask_photo"),
         reply_markup=admin_cancel_keyboard(i18n),
+    )
+
+
+async def _ask_subcategory(
+    message: Message,
+    i18n: LocalizationService,
+    state: FSMContext,
+    session: AsyncSession,
+    category: Category,
+) -> None:
+    """Offer only the brands of the chosen category — the assignment guard."""
+    subcategories = await AdminService(session).list_subcategories(category.id)
+    if not subcategories:
+        await state.clear()
+        await message.answer(
+            i18n.t("admin.product_no_subcategories", category=e(category.name_ru)),
+            reply_markup=admin_menu_keyboard(i18n),
+        )
+        return
+
+    await state.set_state(AddProductStates.subcategory)
+    await message.answer(
+        i18n.t("admin.product_ask_subcategory"),
+        reply_markup=admin_cancel_keyboard(i18n),
+    )
+    await message.answer(
+        i18n.t("admin.product_pick_subcategory", category=e(category.name_ru)),
+        reply_markup=admin_subcategory_pick_keyboard(subcategories),
     )
 
 
@@ -299,7 +350,8 @@ async def process_category(
     session: AsyncSession,
 ) -> None:
     await callback.answer()
-    if callback.message is None or callback.data is None:
+    message = _chat_message(callback)
+    if message is None or callback.data is None:
         return
 
     raw_id = callback.data.removeprefix(CALLBACK_PRODUCT_CAT_PREFIX)
@@ -310,19 +362,15 @@ async def process_category(
 
     category = await AdminService(session).get_category(category_id)
     if category is None:
-        await callback.message.answer(i18n.t("admin.product_category_invalid"))
+        await message.answer(i18n.t("admin.product_category_invalid"))
         return
 
-    await state.update_data(category_id=category.id, category_name=category.name)
-    await state.set_state(AddProductStates.flavor)
+    await state.update_data(category_id=category.id, category_name=category.name_ru)
     try:
-        await callback.message.edit_reply_markup(reply_markup=None)
+        await message.edit_reply_markup(reply_markup=None)
     except Exception:
         logger.debug("Could not clear category keyboard", exc_info=True)
-    await callback.message.answer(
-        i18n.t("admin.product_ask_flavor"),
-        reply_markup=admin_cancel_keyboard(i18n),
-    )
+    await _ask_subcategory(message, i18n, state, session, category)
 
 
 @router.message(StateFilter(AddProductStates.category))
@@ -334,6 +382,63 @@ async def process_category_invalid(
 ) -> None:
     await message.answer(i18n.t("admin.product_category_invalid"))
     await _ask_category(message, i18n, state, session)
+
+
+@router.callback_query(
+    StateFilter(AddProductStates.subcategory),
+    F.data.startswith(CALLBACK_PRODUCT_SUB_PREFIX),
+)
+async def process_subcategory(
+    callback: CallbackQuery,
+    i18n: LocalizationService,
+    state: FSMContext,
+    session: AsyncSession,
+) -> None:
+    await callback.answer()
+    message = _chat_message(callback)
+    if message is None or callback.data is None:
+        return
+
+    subcategory_id = parse_positive_int(
+        callback.data.removeprefix(CALLBACK_PRODUCT_SUB_PREFIX)
+    )
+    if subcategory_id is None:
+        await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
+        return
+
+    admin = AdminService(session)
+    subcategory = await admin.get_subcategory(subcategory_id)
+    if subcategory is None:
+        await message.answer(i18n.t("admin.product_subcategory_invalid"))
+        return
+
+    data = await state.get_data()
+    category_id = data.get("category_id")
+    if category_id is None or subcategory.category_id != int(category_id):
+        # Guard: a stale keyboard must never attach a brand to the wrong category.
+        await message.answer(i18n.t("admin.product_subcategory_mismatch"))
+        return
+
+    await state.update_data(
+        subcategory_id=subcategory.id, subcategory_name=subcategory.name_ru
+    )
+    await state.set_state(AddProductStates.flavor)
+    try:
+        await message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        logger.debug("Could not clear brand keyboard", exc_info=True)
+    await message.answer(
+        i18n.t("admin.product_ask_flavor"),
+        reply_markup=admin_cancel_keyboard(i18n),
+    )
+
+
+@router.message(StateFilter(AddProductStates.subcategory))
+async def process_subcategory_invalid(
+    message: Message,
+    i18n: LocalizationService,
+) -> None:
+    await message.answer(i18n.t("admin.product_subcategory_invalid"))
 
 
 @router.message(StateFilter(AddProductStates.price), F.text)
@@ -392,9 +497,11 @@ async def confirm_add_product(
             "name_ru",
             "name_en",
             "name_de",
+            "name_uk",
             "description_ru",
             "description_en",
             "description_de",
+            "description_uk",
             "flavor",
             "volume",
             "nicotine_strength",
@@ -410,12 +517,15 @@ async def confirm_add_product(
 
         product = await AdminService(session).create_product(
             category_id=int(data["category_id"]),
+            subcategory_id=int(data["subcategory_id"]),
             name_ru=data["name_ru"],
             name_en=data["name_en"],
             name_de=data["name_de"],
+            name_uk=data["name_uk"],
             description_ru=data["description_ru"],
             description_en=data["description_en"],
             description_de=data["description_de"],
+            description_uk=data["description_uk"],
             flavor=data["flavor"],
             volume=data["volume"],
             nicotine_strength=data["nicotine_strength"],

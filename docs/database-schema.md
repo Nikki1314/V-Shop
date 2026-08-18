@@ -6,6 +6,7 @@ PostgreSQL schema is managed by Alembic.
 |---|---|
 | `a9b389353e68` | Initial tables |
 | `b2c4d5e6f7a8` | Performance indexes |
+| `c7e1f4a9d3b6` | Catalog hierarchy: `subcategories`, localized names, `uk` columns |
 
 ```bash
 alembic upgrade head
@@ -20,8 +21,27 @@ users 1──1 carts 1──* cart_items *──1 products
   │                              ▲
   │                              │
   └──* orders 1──* order_items ──┘
-                     products *──1 categories
+
+categories 1──* subcategories 1──* products      ← current hierarchy
+categories 1──────────────────* products         ← legacy link, retained
 ```
+
+## Catalog hierarchy
+
+`Category → Subcategory → Product`. Both levels carry four localized names
+(`ru` / `en` / `de` / `uk`), `sort_order`, `is_active` and timestamps.
+
+Two columns are **deliberately retained** from the pre-hierarchy schema so the
+existing handlers keep working while the catalog UI is migrated:
+
+| Legacy column | Superseded by | Status |
+|---|---|---|
+| `categories.name` | `categories.name_{ru,en,de,uk}` | Still written, kept in sync by `CategoryRepository` |
+| `products.category_id` | `products.subcategory_id` | Still written; `subcategory_id` is nullable until product creation collects one |
+
+A later **contract** migration drops both once the catalog and admin UI read the
+hierarchy. Until then `alembic check` stays clean because the models still map
+them.
 
 ## Tables
 
@@ -43,19 +63,39 @@ users 1──1 carts 1──* cart_items *──1 products
 | Column | Type | Notes |
 |---|---|---|
 | `id` | serial PK | |
-| `name` | varchar(255) | Display name |
+| `name` | varchar(255) | **Legacy** single-language name; kept in sync on write |
+| `name_ru` / `name_en` / `name_de` / `name_uk` | varchar(255) | Localized names |
 | `sort_order` | int | Default `0`; lower sorts first |
+| `is_active` | boolean | Default `true` |
+| `created_at` / `updated_at` | timestamptz | `updated_at` maintained on write |
 
-Indexes: `sort_order`, `name`.
+Indexes: `sort_order`, `name`, `is_active`.
+
+### `subcategories`
+
+Brand / product group inside a category.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | serial PK | |
+| `category_id` | int FK → categories | `ON DELETE RESTRICT` |
+| `name_ru` / `name_en` / `name_de` / `name_uk` | varchar(255) | Localized names |
+| `sort_order` | int | Default `0` |
+| `is_active` | boolean | Default `true` |
+| `created_at` / `updated_at` | timestamptz | |
+
+Indexes: `category_id`, composite `(category_id, is_active)`, `sort_order`.
 
 ### `products`
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | serial PK | |
-| `category_id` | int FK → categories | `ON DELETE RESTRICT` |
-| `name_ru` / `name_en` / `name_de` | varchar(255) | Localized names |
-| `description_ru` / `en` / `de` | text | Localized descriptions |
+| `subcategory_id` | int FK → subcategories, nullable | `ON DELETE RESTRICT`; the hierarchy link |
+| `category_id` | int FK → categories | **Legacy** direct link, `ON DELETE RESTRICT` |
+| `name_ru` / `name_en` / `name_de` / `name_uk` | varchar(255) | Localized names |
+| `description_ru` / `en` / `de` / `uk` | text | Localized descriptions |
+| `updated_at` | timestamptz | Maintained on write |
 | `flavor` | varchar(255) | |
 | `volume` | varchar(64) | |
 | `nicotine_strength` | varchar(64) | |

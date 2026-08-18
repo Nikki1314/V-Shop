@@ -8,4 +8,8 @@ class ProductInUseError(Exception):
 
 
 class CategoryInUseError(Exception):
-    """Raised when a category cannot be deleted because it still has products."""
+    """Raised when a category still has subcategories or products."""
+
+
+class SubcategoryInUseError(Exception):
+    """Raised when a subcategory cannot be deleted because it still has products."""

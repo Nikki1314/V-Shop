@@ -7,6 +7,7 @@ from app.repositories.category import CategoryRepository
 from app.repositories.order import OrderRepository
 from app.repositories.order_item import OrderItemRepository
 from app.repositories.product import ProductRepository
+from app.repositories.subcategory import SubcategoryRepository
 from app.repositories.user import UserRepository
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "OrderItemRepository",
     "OrderRepository",
     "ProductRepository",
+    "SubcategoryRepository",
     "UserRepository",
 ]
