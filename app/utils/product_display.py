@@ -7,6 +7,16 @@ from app.services.localization import LocalizationService
 from app.utils.html import e
 
 
+def localized_category_name(entity: object, language: str) -> str:
+    """Localized name for a Category or Subcategory (same column layout)."""
+    field = f"name_{language}"
+    value = getattr(entity, field, None)
+    if isinstance(value, str) and value:
+        return value
+    fallback = getattr(entity, "name_en", "")
+    return fallback if isinstance(fallback, str) else ""
+
+
 def localized_product_name(product: Product, language: str) -> str:
     return {
         "ru": product.name_ru,

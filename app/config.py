@@ -56,6 +56,21 @@ class Settings(BaseSettings):
             "Manager group or private admin chat ID for new order notifications"
         ),
     )
+    review_group_chat_id: int | None = Field(
+        default=None,
+        description=(
+            "Private customer reviews group. The bot must be an administrator "
+            "there with can_invite_users to mint invite links. Unset disables "
+            "the Reviews button."
+        ),
+    )
+    review_invite_link: str | None = Field(
+        default=None,
+        description=(
+            "Optional pre-made invite link. Used verbatim when set, so the "
+            "feature works even if the bot cannot create links itself."
+        ),
+    )
     app_env: str = Field(default="development", description="Application environment name")
     log_level: str = Field(default="INFO", description="Root logging level")
     telegram_ssl_verify: bool = Field(
@@ -67,6 +82,11 @@ class Settings(BaseSettings):
     @classmethod
     def parse_admin_ids(cls, value: object) -> list[int]:
         return _parse_admin_ids(value)
+
+    @property
+    def reviews_enabled(self) -> bool:
+        """Reviews need either a group to mint links in, or a static link."""
+        return self.review_group_chat_id is not None or bool(self.review_invite_link)
 
     @property
     def is_development(self) -> bool:

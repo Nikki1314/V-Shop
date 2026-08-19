@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.models.enums import OrderStatus
 from app.models.order import Order
 from app.services.localization import LocalizationService
-from app.utils.order_status import status_code, status_from_code, status_label
+from app.utils.order_status import (
+    allowed_transitions,
+    status_action_label,
+    status_code,
+    status_from_code,
+    status_label,
+)
 from app.utils.telegram_ui import truncate_button_label
 
 CALLBACK_ORDER_ACTIONS = "admin:ord:actions"
@@ -35,6 +40,7 @@ __all__ = (
     "CALLBACK_ORDER_CANCEL",
     "ORDERS_PAGE_SIZE",
     "status_label",
+    "status_action_label",
     "status_code",
     "status_from_code",
 )
@@ -154,12 +160,12 @@ def order_manage_keyboard(
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     status_row: list[InlineKeyboardButton] = []
-    for status in OrderStatus:
-        if status == order.status:
-            continue
+    # Only offer moves the lifecycle permits; a completed or cancelled order
+    # shows no status buttons at all.
+    for status in allowed_transitions(order.status):
         status_row.append(
             InlineKeyboardButton(
-                text=status_label(i18n, status),
+                text=status_action_label(i18n, status),
                 callback_data=(
                     f"{CALLBACK_ORDER_STATUS_PREFIX}{order.id}:{status_code(status)}"
                     f":{list_kind}:{page}"

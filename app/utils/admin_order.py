@@ -6,7 +6,8 @@ from html import escape
 
 from app.models.order import Order
 from app.services.localization import LocalizationService
-from app.utils.labels import city_label, delivery_label
+from app.utils.html import e
+from app.utils.labels import city_label, delivery_label, payment_label
 from app.utils.order_status import status_label
 from app.utils.product_display import localized_product_name
 from app.utils.timefmt import format_timestamp
@@ -42,6 +43,7 @@ def format_admin_order_card(order: Order, i18n: LocalizationService) -> str:
 
     return i18n.t(
         "admin.order_card",
+        payment=e(payment_label(i18n, order.payment_method)),
         order_id=order.id,
         status=status_label(i18n, order.status),
         customer=escape(order.customer_name),

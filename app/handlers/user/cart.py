@@ -154,7 +154,7 @@ async def add_to_cart(
         await callback.answer(i18n.t("common.not_available"), show_alert=True)
         return
 
-    product = await CatalogService(session).get_active_product(product_id)
+    product = await CatalogService(session).get_purchasable_product(product_id)
     if product is None:
         await callback.answer(localized.t("product.not_found"), show_alert=True)
         return
@@ -163,7 +163,9 @@ async def add_to_cart(
     await callback.answer(localized.t("product.added"))
     await callback.message.answer(
         localized.t("product.added"),
-        reply_markup=product_added_keyboard(localized),
+        reply_markup=product_added_keyboard(
+            localized, subcategory_id=product.subcategory_id
+        ),
     )
 
 

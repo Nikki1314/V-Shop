@@ -112,3 +112,20 @@ class CatalogService:
     async def get_active_product(self, product_id: int) -> Product | None:
         """Legacy lookup: checks the product only, not its parents."""
         return await self.products.get_active_by_id(product_id)
+
+    async def get_purchasable_product(self, product_id: int) -> Product | None:
+        """
+        A product the customer may actually put in the cart.
+
+        Products that sit in the hierarchy must be visible all the way up, so a
+        stale card cannot add an item from a hidden brand. Pre-hierarchy rows
+        carry no brand and would fail that join, so they fall back to their own
+        ``is_active`` flag — otherwise existing products would become unbuyable.
+        """
+        product = await self.products.get_visible_by_id(product_id)
+        if product is not None:
+            return product
+        legacy = await self.products.get_active_by_id(product_id)
+        if legacy is not None and legacy.subcategory_id is None:
+            return legacy
+        return None

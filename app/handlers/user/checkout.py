@@ -17,13 +17,15 @@ from app.keyboards.checkout import (
     CALLBACK_CANCEL,
     CALLBACK_CONFIRM,
     CALLBACK_DELIVERY_PREFIX,
+    CALLBACK_PAYMENT_PREFIX,
     checkout_cancel_keyboard,
     confirmation_keyboard,
     contact_keyboard,
     delivery_keyboard,
+    payment_keyboard,
 )
 from app.keyboards.reply import main_menu_keyboard, remove_keyboard
-from app.models.enums import CityChoice, DeliveryType
+from app.models.enums import CityChoice, DeliveryType, PaymentMethod
 from app.models.user import User
 from app.services.cart import CartService, CartView
 from app.services.localization import LocalizationService
@@ -39,7 +41,7 @@ from app.services.user import UserService
 from app.states.checkout import CheckoutStates
 from app.utils.concurrency import keyed_lock
 from app.utils.html import e
-from app.utils.labels import city_label, delivery_label
+from app.utils.labels import city_label, delivery_label, payment_label
 from app.utils.telegram_ui import clear_inline_markup
 from app.utils.validators import nonempty, normalize_phone
 
@@ -53,6 +55,7 @@ _CHECKOUT_STATES = (
     CheckoutStates.address,
     CheckoutStates.preferred_time,
     CheckoutStates.contact,
+    CheckoutStates.payment_method,
     CheckoutStates.confirmation,
 )
 
@@ -84,6 +87,10 @@ def build_checkout_summary(
         i18n.t(
             "checkout.summary_phone",
             phone=e(_phone_label(i18n, data.get("phone"))),
+        ),
+        i18n.t(
+            "checkout.summary_payment",
+            payment=e(payment_label(i18n, data.get("payment_method"))),
         ),
         "",
         i18n.t("checkout.summary_items"),
@@ -375,7 +382,7 @@ async def checkout_contact_phone(
         return
 
     await state.update_data(phone=phone)
-    await _show_confirmation(message, state, session, i18n)
+    await _ask_payment(message, state, session, i18n)
 
 
 @router.message(StateFilter(CheckoutStates.contact), LocalizedText("checkout.use_telegram"))
@@ -386,7 +393,7 @@ async def checkout_contact_telegram(
     i18n: LocalizationService,
 ) -> None:
     await state.update_data(phone=None)
-    await _show_confirmation(message, state, session, i18n)
+    await _ask_payment(message, state, session, i18n)
 
 
 @router.message(StateFilter(CheckoutStates.contact), F.text)
@@ -404,7 +411,7 @@ async def checkout_contact_typed_phone(
         )
         return
     await state.update_data(phone=phone)
-    await _show_confirmation(message, state, session, i18n)
+    await _ask_payment(message, state, session, i18n)
 
 
 @router.message(StateFilter(CheckoutStates.contact))
@@ -418,12 +425,74 @@ async def checkout_contact_invalid(
     )
 
 
+@router.callback_query(
+    StateFilter(CheckoutStates.payment_method),
+    F.data.startswith(CALLBACK_PAYMENT_PREFIX),
+)
+async def checkout_payment(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    i18n: LocalizationService,
+) -> None:
+    message = callback.message if isinstance(callback.message, Message) else None
+    if callback.data is None or message is None or callback.from_user is None:
+        await callback.answer()
+        return
+
+    raw = callback.data.removeprefix(CALLBACK_PAYMENT_PREFIX)
+    try:
+        payment = PaymentMethod(raw)
+    except ValueError:
+        await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
+        return
+
+    user = await UserService(session).ensure_user(callback.from_user)
+    localized = LocalizationService.from_user(user)
+
+    await state.update_data(payment_method=payment.value)
+    await callback.answer()
+    await clear_inline_markup(message)
+    await _show_confirmation(message, state, session, localized)
+
+
+@router.message(StateFilter(CheckoutStates.payment_method))
+async def checkout_payment_invalid(
+    message: Message,
+    i18n: LocalizationService,
+) -> None:
+    await message.answer(i18n.t("checkout.invalid_payment"))
+
+
 @router.message(StateFilter(CheckoutStates.confirmation))
 async def checkout_confirmation_waiting(
     message: Message,
     i18n: LocalizationService,
 ) -> None:
     await message.answer(i18n.t("checkout.use_buttons"))
+
+
+async def _ask_payment(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    i18n: LocalizationService,
+) -> None:
+    """Ask for the preferred payment method before the summary."""
+    if message.from_user is None:
+        return
+    user = await UserService(session).ensure_user(message.from_user)
+    localized = LocalizationService.from_user(user)
+
+    await state.set_state(CheckoutStates.payment_method)
+    await message.answer(
+        localized.t("checkout.ask_payment"),
+        reply_markup=remove_keyboard(),
+    )
+    await message.answer(
+        localized.t("checkout.use_buttons"),
+        reply_markup=payment_keyboard(localized),
+    )
 
 
 async def _show_confirmation(
@@ -484,7 +553,13 @@ async def checkout_confirm(
         user = await UserService(session).ensure_user(callback.from_user)
         localized = LocalizationService.from_user(user)
 
-        required = ("customer_name", "delivery_type", "address", "preferred_time")
+        required = (
+            "customer_name",
+            "delivery_type",
+            "address",
+            "preferred_time",
+            "payment_method",
+        )
         if any(not data.get(key) for key in required):
             await state.clear()
             await clear_inline_markup(callback.message)
@@ -497,6 +572,7 @@ async def checkout_confirm(
 
         try:
             delivery = DeliveryType(str(data["delivery_type"]))
+            payment = PaymentMethod(str(data["payment_method"]))
         except ValueError:
             await state.clear()
             await clear_inline_markup(callback.message)
@@ -530,6 +606,7 @@ async def checkout_confirm(
                 address=str(data["address"]),
                 preferred_time=str(data["preferred_time"]),
                 phone=phone,
+                payment_method=payment,
             )
         except EmptyCartError:
             await state.clear()

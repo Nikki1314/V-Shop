@@ -42,7 +42,15 @@
     "category_empty": "In dieser Kategorie gibt es noch keine Produkte.",
     "category_opened": "<b>{name}</b>",
     "back_to_categories": "⬅️ Zurück zu Kategorien",
-    "not_found": "Kategorie nicht gefunden."
+    "not_found": "Kategorie nicht gefunden.",
+    "choose_subcategory": "Marke wählen:",
+    "choose_product": "Produkt wählen:",
+    "subcategory_opened": "<b>{category}</b> › <b>{name}</b>",
+    "no_subcategories": "In dieser Kategorie gibt es noch keine Marken.",
+    "subcategory_empty": "Diese Marke hat noch keine Produkte.",
+    "subcategory_not_found": "Marke nicht gefunden.",
+    "back_to_subcategories": "⬅️ Zu den Marken",
+    "back_to_products": "⬅️ Zu den Produkten"
   },
   "product": {
     "card": "<b>{name}</b>\n\n{description}\n\n{flavor_label}: {flavor}\n{volume_label}: {volume}\n{nicotine_label}: {nicotine}\n{price_label}: {price}",
@@ -53,9 +61,10 @@
     "add_to_cart": "📥 In den Warenkorb",
     "added": "✅ Produkt wurde zum Warenkorb hinzugefügt.",
     "continue_shopping": "Weiter einkaufen",
-    "open_cart": "Warenkorb öffnen",
+    "open_cart": "🛒 Warenkorb",
     "not_found": "Produkt nicht gefunden.",
-    "inactive": "Dieses Produkt ist derzeit nicht verfügbar."
+    "inactive": "Dieses Produkt ist derzeit nicht verfügbar.",
+    "back": "⬅️ Zurück"
   },
   "cart": {
     "title": "🛒 Warenkorb",
@@ -90,6 +99,7 @@
     "summary_address": "Adresse: {address}",
     "summary_time": "Zeit: {time}",
     "summary_phone": "Telefon: {phone}",
+    "summary_payment": "Zahlung: {payment}",
     "summary_items": "Artikel:",
     "summary_item": "• {name} × {quantity} — {price}",
     "summary_total": "Gesamt: {total}",
@@ -105,7 +115,12 @@
     "empty_cart": "Dein Warenkorb ist leer. Füge vor dem Checkout Produkte hinzu.",
     "already_submitted": "Diese Bestellung wurde bereits gesendet.",
     "inactive_product": "Ein Produkt in deinem Warenkorb ist nicht mehr verfügbar. Bitte aktualisiere den Warenkorb und versuche es erneut.",
-    "invalid_delivery": "Diese Lieferart ist für deine Stadt nicht verfügbar. Bitte starte den Checkout erneut."
+    "invalid_delivery": "Diese Lieferart ist für deine Stadt nicht verfügbar. Bitte starte den Checkout erneut.",
+    "ask_payment": "Wie möchten Sie bezahlen?",
+    "payment_cash": "💵 Barzahlung",
+    "payment_card": "💳 Kartenüberweisung",
+    "payment_not_set": "nicht angegeben",
+    "invalid_payment": "Bitte wählen Sie eine Zahlungsart mit den Schaltflächen unten."
   },
   "info": {
     "title": "ℹ Informationen",
@@ -113,19 +128,23 @@
     "btn_delivery": "🚚 Lieferung",
     "btn_payment": "💳 Zahlung",
     "btn_contacts": "📞 Kontakte",
+    "btn_reviews": "⭐ Bewertungen",
     "change_language": "🌍 Sprache ändern",
     "change_city": "📍 Stadt ändern",
     "back": "⬅️ Zurück zu Informationen",
     "berlin": {
       "delivery": "<b>🚚 Lieferung — Berlin</b>\n\n<b>🏪 Abholung</b>\nHole deine Bestellung an unserem Berliner Abholpunkt ab.\nIn der Regel bereit innerhalb von 1–2 Stunden nach Bestätigung.\nDie genaue Adresse senden wir nach Annahme der Bestellung.\n\n<b>🚗 Kurier</b>\nKurierlieferung in Berlin.\nTypisches Zeitfenster: am selben oder nächsten Tag.\nBitte gib beim Checkout eine klare Adresse und Wunschzeit an.",
-      "payment": "<b>💳 Zahlung — Berlin</b>\n\n• Bar bei Abholung / an den Kurier\n• Banküberweisung (Details in der Bestellbestätigung)\n• PayPal (auf Anfrage)\n\nZahlungsanweisungen erhältst du mit der Bestellbestätigung.",
-      "contacts": "<b>📞 Kontakte — Berlin</b>\n\n• Telegram Support: @vshop_support\n• WhatsApp / Telefon: +49 000 0000000\n• Öffnungszeiten: Mo–Sa, 12:00–21:00\n\nBei Fragen zur Bestellung antworte in diesem Chat oder kontaktiere den Support mit deiner Bestell-ID."
+      "payment": "<b>💳 Zahlung — Berlin</b>\n\n• Barzahlung bei Abholung oder an den Kurier\n• Bank- / Kartenüberweisung: <b>auf Anfrage</b>\n\nDie Zahlungsdaten erhalten Sie zusammen mit Ihrer Bestellbestätigung.",
+      "contacts": "<b>📞 Kontakte</b>\n\n<b>In Entwicklung.</b>\n\nBei Fragen schreiben Sie uns bitte in unserer Bewertungsgruppe — dort antworten wir derzeit."
     },
     "other": {
       "delivery": "<b>🚚 Lieferung — Andere Städte</b>\n\n<b>📦 Postversand</b>\nVersand über den nationalen Postdienst.\nSendungsnummer nach dem Versand.\n\n<b>🚚 Lieferdienst</b>\nVersand über Kurierdienste (DHL o. Ä.).\nLieferzeit je nach Region (meist 2–5 Werktage).\n\nBitte gib beim Checkout eine vollständige Adresse und Wunschzeit an.",
-      "payment": "<b>💳 Zahlung — Andere Städte</b>\n\n• Banküberweisung vor dem Versand\n• PayPal (auf Anfrage)\n\nDas Paket wird nach Zahlungsbestätigung versendet.\nZahlungsdetails stehen in der Bestellbestätigung.",
-      "contacts": "<b>📞 Kontakte — Andere Städte</b>\n\n• Telegram Support: @vshop_support\n• E-Mail: support@v-shop.example\n• Öffnungszeiten: Mo–Sa, 12:00–21:00\n\nBitte nenne Bestell-ID und Stadt im Support."
-    }
+      "payment": "<b>💳 Zahlung — andere Städte</b>\n\n• Bank- / Kartenüberweisung: <b>auf Anfrage</b>\n\nDas Paket wird nach Zahlungseingang versandt.\nDie Zahlungsdaten erhalten Sie zusammen mit Ihrer Bestellbestätigung.",
+      "contacts": "<b>📞 Kontakte</b>\n\n<b>In Entwicklung.</b>\n\nBei Fragen schreiben Sie uns bitte in unserer Bewertungsgruppe — dort antworten wir derzeit."
+    },
+    "reviews_text": "⭐ <b>Bewertungen</b>\n\nIn unserer Kundengruppe finden Sie Bewertungen, Fragen und Neuigkeiten.\nTippen Sie unten, um beizutreten.",
+    "reviews_open": "⭐ Bewertungsgruppe öffnen",
+    "reviews_unavailable": "⭐ Die Bewertungsgruppe ist vorübergehend nicht erreichbar. Bitte versuchen Sie es später erneut."
   },
   "error": {
     "generic": "⚠️ Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es später erneut.",
@@ -135,6 +154,12 @@
     "telegram": "⚠️ Telegram konnte nicht erreicht werden. Bitte versuche es erneut.",
     "network": "⚠️ Netzwerkproblem. Bitte versuche es in einem Moment erneut.",
     "unauthorized": "Du hast keinen Zugriff auf diese Aktion."
+  },
+  "notification": {
+    "status_accepted": "✅ Ihre Bestellung #{order_id} wurde angenommen und wird vorbereitet.",
+    "status_shipped": "📦 Ihre Bestellung #{order_id} wurde versandt.",
+    "status_completed": "🎉 Ihre Bestellung #{order_id} ist abgeschlossen. Vielen Dank für Ihren Einkauf!",
+    "status_cancelled": "❌ Ihre Bestellung #{order_id} wurde storniert. Bei Fragen schreiben Sie uns in der Bewertungsgruppe."
   },
   "admin": {
     "panel_ready": "⚙️ Admin-Bereich ist bereit.\nWähle einen Bereich:",
@@ -261,11 +286,12 @@
     "order_not_found": "Bestellung nicht gefunden.",
     "order_status_new": "🆕 Neu",
     "order_status_accepted": "👍 Angenommen",
+    "order_status_shipped": "📦 Versandt",
     "order_status_completed": "✅ Abgeschlossen",
     "order_status_cancelled": "❌ Storniert",
     "order_status_changed": "Bestellung #{order_id} → {status}",
     "order_item": "• {name} × <b>{quantity}</b> — <code>{price}</code>",
-    "order_card": "<b>Bestellung #{order_id}</b> — {status}\n🕐 {created}\n\n👤 <b>{customer}</b>\n🔗 {username}\n🆔 <code>{telegram_id}</code>\n📍 {city}\n🚚 {delivery}\n🏠 {address}\n🕒 {time}\n📞 {phone}\n\n🛍 <b>Artikel</b>\n{items}\n\n💰 <b>Summe:</b> <code>{total}</code>\n\nStatus ändern:",
+    "order_card": "<b>Bestellung #{order_id}</b> — {status}\n🕐 {created}\n\n👤 <b>{customer}</b>\n🔗 {username}\n🆔 <code>{telegram_id}</code>\n📍 {city}\n🚚 {delivery}\n🏠 {address}\n🕒 {time}\n📞 {phone}\\n💳 {payment}\n\n🛍 <b>Artikel</b>\n{items}\n\n💰 <b>Summe:</b> <code>{total}</code>\n\nStatus ändern:",
     "broadcast_actions": "Empfänger: <b>{recipients}</b>\nAktion wählen:",
     "broadcast_start": "📢 Neuer Broadcast",
     "broadcast_ask_content": "Sende den Broadcast-<b>Text</b> oder ein <b>Foto</b> (Beschriftung optional).",
@@ -345,6 +371,13 @@
     "product_pick_subcategory": "Marken in {category}:",
     "product_subcategory_invalid": "Wählen Sie eine Marke mit den Schaltflächen unten.",
     "product_subcategory_mismatch": "⚠️ Diese Marke gehört nicht zur gewählten Kategorie. Bitte andere wählen.",
-    "product_no_subcategories": "⚠️ Kategorie {category} hat noch keine Marken. Bitte zuerst eine anlegen."
+    "product_no_subcategories": "⚠️ Kategorie {category} hat noch keine Marken. Bitte zuerst eine anlegen.",
+    "order_action_accept": "👍 Annehmen",
+    "order_action_reopen": "↩️ Bestellung wieder öffnen",
+    "order_action_ship": "📦 Als versandt markieren",
+    "order_action_complete": "✅ Abschließen",
+    "order_action_cancel": "❌ Bestellung stornieren",
+    "order_invalid_transition": "⚠️ Eine Bestellung mit Status {current} kann nicht zu {target} werden.",
+    "order_is_final": "Diese Bestellung ist abgeschlossen — der Status kann nicht mehr geändert werden."
   }
 }

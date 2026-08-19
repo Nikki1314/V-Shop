@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -139,6 +139,37 @@ class ProductRepository(BaseRepository[Product]):
             .options(selectinload(Product.subcategory))
         )
         return result.first()
+
+    async def list_unsellable_ids(self, product_ids: list[int]) -> set[int]:
+        """
+        Of the given products, which must not be sold.
+
+        A product is unsellable when it is inactive, or when it sits in the
+        hierarchy under a hidden brand or category. Pre-hierarchy rows carry no
+        brand, so the LEFT JOINs leave them untouched and they stay sellable.
+        One query, never N+1.
+        """
+        if not product_ids:
+            return set()
+        rows = await self.session.scalars(
+            select(Product.id)
+            .outerjoin(Subcategory, Subcategory.id == Product.subcategory_id)
+            .outerjoin(Category, Category.id == Subcategory.category_id)
+            .where(
+                Product.id.in_(product_ids),
+                or_(
+                    Product.is_active.is_(False),
+                    and_(
+                        Product.subcategory_id.is_not(None),
+                        or_(
+                            Subcategory.is_active.is_(False),
+                            Category.is_active.is_(False),
+                        ),
+                    ),
+                ),
+            )
+        )
+        return set(rows.all())
 
     async def list_with_parents(
         self,

@@ -10,10 +10,11 @@ from aiogram.types import (
     ReplyKeyboardRemove,
 )
 
-from app.models.enums import CityChoice, DeliveryType
+from app.models.enums import CityChoice, DeliveryType, PaymentMethod
 from app.services.localization import LocalizationService
 
 CALLBACK_DELIVERY_PREFIX = "checkout:delivery:"
+CALLBACK_PAYMENT_PREFIX = "checkout:pay:"
 CALLBACK_CONFIRM = "checkout:confirm"
 CALLBACK_CANCEL = "checkout:cancel"
 
@@ -101,3 +102,29 @@ def remove_reply_keyboard() -> ReplyKeyboardRemove:
     from app.keyboards.reply import remove_keyboard
 
     return remove_keyboard()
+
+
+def payment_keyboard(i18n: LocalizationService) -> InlineKeyboardMarkup:
+    """Preferred payment method: cash or card transfer."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=i18n.t("checkout.payment_cash"),
+                    callback_data=f"{CALLBACK_PAYMENT_PREFIX}{PaymentMethod.CASH.value}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=i18n.t("checkout.payment_card"),
+                    callback_data=f"{CALLBACK_PAYMENT_PREFIX}{PaymentMethod.CARD.value}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=i18n.t("checkout.cancel"),
+                    callback_data=CALLBACK_CANCEL,
+                )
+            ],
+        ]
+    )

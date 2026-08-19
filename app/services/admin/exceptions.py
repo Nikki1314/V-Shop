@@ -13,3 +13,12 @@ class CategoryInUseError(Exception):
 
 class SubcategoryInUseError(Exception):
     """Raised when a subcategory cannot be deleted because it still has products."""
+
+
+class InvalidStatusTransitionError(Exception):
+    """Raised when an order status change is not permitted by the lifecycle."""
+
+    def __init__(self, current: object, target: object) -> None:
+        self.current = current
+        self.target = target
+        super().__init__(f"Cannot move order from {current} to {target}")

@@ -33,7 +33,7 @@ from aiogram.exceptions import TelegramAPIError
 from app.config import Settings
 from app.models.order import Order
 from app.models.user import User
-from app.utils.labels import city_label_en, delivery_label_en
+from app.utils.labels import city_label_en, delivery_label_en, payment_label_en
 from app.utils.product_display import localized_product_name
 from app.utils.timefmt import format_timestamp
 
@@ -107,6 +107,7 @@ class OrderNotificationService:
             f"🏠 <b>Address:</b> {address}\n"
             f"🕒 <b>Preferred time:</b> {preferred_time}\n"
             f"📞 <b>Phone:</b> {phone}\n"
+            f"💳 <b>Payment:</b> {escape(payment_label_en(order.payment_method))}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"🛍 <b>Ordered products</b>\n"
             f"{items_block}\n"

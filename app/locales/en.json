@@ -42,7 +42,15 @@
     "category_empty": "There are no products in this category yet.",
     "category_opened": "<b>{name}</b>",
     "back_to_categories": "⬅️ Back to categories",
-    "not_found": "Category not found."
+    "not_found": "Category not found.",
+    "choose_subcategory": "Choose a brand:",
+    "choose_product": "Choose a product:",
+    "subcategory_opened": "<b>{category}</b> › <b>{name}</b>",
+    "no_subcategories": "There are no brands in this category yet.",
+    "subcategory_empty": "There are no products in this brand yet.",
+    "subcategory_not_found": "Brand not found.",
+    "back_to_subcategories": "⬅️ Back to brands",
+    "back_to_products": "⬅️ Back to products"
   },
   "product": {
     "card": "<b>{name}</b>\n\n{description}\n\n{flavor_label}: {flavor}\n{volume_label}: {volume}\n{nicotine_label}: {nicotine}\n{price_label}: {price}",
@@ -53,9 +61,10 @@
     "add_to_cart": "📥 Add to Cart",
     "added": "✅ Product added to cart.",
     "continue_shopping": "Continue Shopping",
-    "open_cart": "Open Cart",
+    "open_cart": "🛒 Cart",
     "not_found": "Product not found.",
-    "inactive": "This product is currently unavailable."
+    "inactive": "This product is currently unavailable.",
+    "back": "⬅️ Back"
   },
   "cart": {
     "title": "🛒 Cart",
@@ -90,6 +99,7 @@
     "summary_address": "Address: {address}",
     "summary_time": "Preferred time: {time}",
     "summary_phone": "Phone: {phone}",
+    "summary_payment": "Payment: {payment}",
     "summary_items": "Items:",
     "summary_item": "• {name} × {quantity} — {price}",
     "summary_total": "Total: {total}",
@@ -105,7 +115,12 @@
     "empty_cart": "Your cart is empty. Add products before checkout.",
     "already_submitted": "This order was already submitted.",
     "inactive_product": "A product in your cart is no longer available. Please update your cart and try again.",
-    "invalid_delivery": "That delivery method is not available for your city. Please start checkout again."
+    "invalid_delivery": "That delivery method is not available for your city. Please start checkout again.",
+    "ask_payment": "How would you prefer to pay?",
+    "payment_cash": "💵 Cash",
+    "payment_card": "💳 Card Transfer",
+    "payment_not_set": "not specified",
+    "invalid_payment": "Please choose a payment method with the buttons below."
   },
   "info": {
     "title": "ℹ Information",
@@ -113,19 +128,23 @@
     "btn_delivery": "🚚 Delivery",
     "btn_payment": "💳 Payment",
     "btn_contacts": "📞 Contacts",
+    "btn_reviews": "⭐ Reviews",
     "change_language": "🌍 Change Language",
     "change_city": "📍 Change City",
     "back": "⬅️ Back to Information",
     "berlin": {
       "delivery": "<b>🚚 Delivery — Berlin</b>\n\n<b>🏪 Pickup</b>\nCollect your order at our Berlin pickup point.\nUsually ready within 1–2 hours after confirmation.\nWe will send the exact address after your order is accepted.\n\n<b>🚗 Courier</b>\nCourier delivery across Berlin.\nTypical delivery window: same day or next day.\nPlease provide a clear address and preferred time at checkout.",
-      "payment": "<b>💳 Payment — Berlin</b>\n\n• Cash on pickup / to courier\n• Bank transfer (details sent with the order confirmation)\n• PayPal (on request)\n\nPayment instructions are included in your order confirmation message.",
-      "contacts": "<b>📞 Contacts — Berlin</b>\n\n• Telegram support: @vshop_support\n• WhatsApp / phone: +49 000 0000000\n• Working hours: Mon–Sat, 12:00–21:00\n\nFor order questions, reply in this chat or contact support with your Order ID."
+      "payment": "<b>💳 Payment — Berlin</b>\n\n• Cash on pickup or to the courier\n• Bank / card transfer: <b>by request</b>\n\nPayment details are sent together with your order confirmation.",
+      "contacts": "<b>📞 Contacts</b>\n\n<b>Under development.</b>\n\nIf you have any questions, please ask them in our Reviews group — that is where we answer right now."
     },
     "other": {
       "delivery": "<b>🚚 Delivery — Other cities</b>\n\n<b>📦 Postal delivery</b>\nShipping via national postal service.\nTracking number is shared after dispatch.\n\n<b>🚚 Delivery service</b>\nShipping via courier companies (DHL / similar).\nDelivery time depends on your region (usually 2–5 business days).\n\nPlease enter a complete postal address and preferred time at checkout.",
-      "payment": "<b>💳 Payment — Other cities</b>\n\n• Bank transfer before shipping\n• PayPal (on request)\n\nThe parcel is dispatched after payment is confirmed.\nPayment details are sent with your order confirmation.",
-      "contacts": "<b>📞 Contacts — Other cities</b>\n\n• Telegram support: @vshop_support\n• Email: support@v-shop.example\n• Working hours: Mon–Sat, 12:00–21:00\n\nPlease include your Order ID and city when contacting support."
-    }
+      "payment": "<b>💳 Payment — Other cities</b>\n\n• Bank / card transfer: <b>by request</b>\n\nThe parcel is dispatched once payment is confirmed.\nPayment details are sent together with your order confirmation.",
+      "contacts": "<b>📞 Contacts</b>\n\n<b>Under development.</b>\n\nIf you have any questions, please ask them in our Reviews group — that is where we answer right now."
+    },
+    "reviews_text": "⭐ <b>Reviews</b>\n\nOur customer group is the place for reviews, questions and news.\nTap below to join.",
+    "reviews_open": "⭐ Open the reviews group",
+    "reviews_unavailable": "⭐ The reviews group is temporarily unavailable. Please try again a little later."
   },
   "error": {
     "generic": "⚠️ An unexpected error occurred. Please try again later.",
@@ -135,6 +154,12 @@
     "telegram": "⚠️ Could not reach Telegram. Please try again.",
     "network": "⚠️ Network problem. Please try again in a moment.",
     "unauthorized": "You do not have access to this action."
+  },
+  "notification": {
+    "status_accepted": "✅ Your order #{order_id} has been accepted and is being prepared.",
+    "status_shipped": "📦 Your order #{order_id} has been shipped.",
+    "status_completed": "🎉 Your order #{order_id} is complete. Thank you for shopping with us!",
+    "status_cancelled": "❌ Your order #{order_id} has been cancelled. Contact us in the Reviews group if you have questions."
   },
   "admin": {
     "panel_ready": "⚙️ Admin panel is ready.\nChoose a section:",
@@ -261,11 +286,12 @@
     "order_not_found": "Order not found.",
     "order_status_new": "🆕 New",
     "order_status_accepted": "👍 Accepted",
+    "order_status_shipped": "📦 Shipped",
     "order_status_completed": "✅ Completed",
     "order_status_cancelled": "❌ Cancelled",
     "order_status_changed": "Order #{order_id} → {status}",
     "order_item": "• {name} × <b>{quantity}</b> — <code>{price}</code>",
-    "order_card": "<b>Order #{order_id}</b> — {status}\n🕐 {created}\n\n👤 <b>{customer}</b>\n🔗 {username}\n🆔 <code>{telegram_id}</code>\n📍 {city}\n🚚 {delivery}\n🏠 {address}\n🕒 {time}\n📞 {phone}\n\n🛍 <b>Items</b>\n{items}\n\n💰 <b>Total:</b> <code>{total}</code>\n\nChange status:",
+    "order_card": "<b>Order #{order_id}</b> — {status}\n🕐 {created}\n\n👤 <b>{customer}</b>\n🔗 {username}\n🆔 <code>{telegram_id}</code>\n📍 {city}\n🚚 {delivery}\n🏠 {address}\n🕒 {time}\n📞 {phone}\\n💳 {payment}\n\n🛍 <b>Items</b>\n{items}\n\n💰 <b>Total:</b> <code>{total}</code>\n\nChange status:",
     "broadcast_actions": "Recipients: <b>{recipients}</b>\nChoose an action:",
     "broadcast_start": "📢 New broadcast",
     "broadcast_ask_content": "Send the broadcast <b>text</b> or a <b>photo</b> (caption optional).",
@@ -345,6 +371,13 @@
     "product_pick_subcategory": "Brands in {category}:",
     "product_subcategory_invalid": "Choose a brand with the buttons below.",
     "product_subcategory_mismatch": "⚠️ That brand does not belong to the chosen category. Pick another.",
-    "product_no_subcategories": "⚠️ Category {category} has no brands yet. Create one in Categories first."
+    "product_no_subcategories": "⚠️ Category {category} has no brands yet. Create one in Categories first.",
+    "order_action_accept": "👍 Accept",
+    "order_action_reopen": "↩️ Reopen order",
+    "order_action_ship": "📦 Mark as Shipped",
+    "order_action_complete": "✅ Complete",
+    "order_action_cancel": "❌ Cancel order",
+    "order_invalid_transition": "⚠️ An order that is {current} cannot become {target}.",
+    "order_is_final": "This order is finished — its status can no longer change."
   }
 }

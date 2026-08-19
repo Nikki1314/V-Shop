@@ -9,4 +9,5 @@ class CheckoutStates(StatesGroup):
     address = State()
     preferred_time = State()
     contact = State()
+    payment_method = State()
     confirmation = State()

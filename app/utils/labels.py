@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.models.enums import CityChoice, DeliveryType
+from app.models.enums import CityChoice, DeliveryType, PaymentMethod
 from app.services.localization import LocalizationService
 
 _CITY_I18N_KEYS = {
@@ -59,3 +59,42 @@ def delivery_label_en(delivery_type: str | None) -> str:
     if not delivery_type:
         return "—"
     return _DELIVERY_LABELS_EN.get(delivery_type, delivery_type)
+
+
+_PAYMENT_I18N_KEYS = {
+    PaymentMethod.CASH.value: "checkout.payment_cash",
+    PaymentMethod.CARD.value: "checkout.payment_card",
+}
+
+# INTENTIONALLY NOT LOCALIZED: staff-facing labels for the ops order alert.
+_PAYMENT_LABELS_EN = {
+    PaymentMethod.CASH.value: "Cash",
+    PaymentMethod.CARD.value: "Card Transfer",
+}
+
+
+def payment_label(
+    i18n: LocalizationService,
+    payment_method: PaymentMethod | str | None,
+) -> str:
+    """Localized payment label; orders placed before the step show a fallback."""
+    if payment_method is None:
+        return i18n.t("checkout.payment_not_set")
+    value = (
+        payment_method.value
+        if isinstance(payment_method, PaymentMethod)
+        else str(payment_method)
+    )
+    key = _PAYMENT_I18N_KEYS.get(value)
+    return i18n.t(key) if key else value
+
+
+def payment_label_en(payment_method: PaymentMethod | str | None) -> str:
+    if payment_method is None:
+        return "—"
+    value = (
+        payment_method.value
+        if isinstance(payment_method, PaymentMethod)
+        else str(payment_method)
+    )
+    return _PAYMENT_LABELS_EN.get(value, value)

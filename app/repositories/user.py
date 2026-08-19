@@ -84,8 +84,17 @@ class UserRepository(BaseRepository[User]):
         return await self.update(user, last_seen=datetime.now(UTC))
 
     async def list_telegram_ids(self) -> list[int]:
-        """All registered Telegram IDs (e.g. for broadcasts)."""
-        result = await self.session.scalars(select(User.telegram_id))
+        """
+        All registered Telegram IDs (e.g. for broadcasts).
+
+        Restricted to positive IDs. Telegram numbers users positively and
+        groups/channels negatively, so this guarantees a broadcast can only
+        ever reach individuals — even if a group ID had somehow been recorded
+        as a user by an older build or a manual edit.
+        """
+        result = await self.session.scalars(
+            select(User.telegram_id).where(User.telegram_id > 0)
+        )
         return list(result.all())
 
     async def list_all_users(self, *, offset: int = 0, limit: int | None = None) -> list[User]:

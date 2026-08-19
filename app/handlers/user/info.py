@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import Settings
 from app.filters.localized_text import LocalizedText
 from app.handlers.user.navigation import ensure_onboarded_user
 from app.keyboards.info import (
@@ -19,12 +20,15 @@ from app.keyboards.info import (
     CALLBACK_INFO_DELIVERY,
     CALLBACK_INFO_OPEN,
     CALLBACK_INFO_PAYMENT,
+    CALLBACK_INFO_REVIEWS,
     info_back_keyboard,
     info_menu_keyboard,
+    reviews_keyboard,
 )
 from app.models.enums import CityChoice
 from app.models.user import User
 from app.services.localization import LocalizationService
+from app.services.review import ReviewService
 from app.services.user import UserService
 from app.utils.html import e
 
@@ -87,7 +91,7 @@ async def _render_topic(
     edit: bool = False,
 ) -> None:
     text = _topic_text(i18n, user, topic)
-    markup = info_back_keyboard(i18n)
+    markup = info_back_keyboard(i18n, with_reviews=topic == "contacts")
     if edit:
         await message.edit_text(text, reply_markup=markup)
     else:
@@ -209,3 +213,45 @@ async def info_change_city(
 
     await callback.answer()
     await _ask_city(callback.message, localized, state)
+
+
+@router.callback_query(F.data == CALLBACK_INFO_REVIEWS)
+async def info_reviews(
+    callback: CallbackQuery,
+    session: AsyncSession,
+    bot: Bot,
+    settings: Settings,
+    i18n: LocalizationService,
+) -> None:
+    """Hand the customer an invite link to the private reviews group.
+
+    The group's chat ID never appears in anything sent to the user: only the
+    invite link is rendered, and only inside a URL button.
+    """
+    message = callback.message if isinstance(callback.message, Message) else None
+    if callback.from_user is None or message is None:
+        await callback.answer()
+        return
+
+    user = await UserService(session).ensure_user(callback.from_user)
+    localized = LocalizationService.from_user(user)
+
+    link = await ReviewService(bot, settings).get_invite_link()
+    if link is None:
+        logger.info(
+            "Reviews link unavailable for telegram_id=%s (enabled=%s)",
+            callback.from_user.id,
+            settings.reviews_enabled,
+        )
+        await callback.answer(
+            localized.t("info.reviews_unavailable"), show_alert=True
+        )
+        return
+
+    await callback.answer()
+    text = localized.t("info.reviews_text")
+    markup = reviews_keyboard(localized, link)
+    try:
+        await message.edit_text(text, reply_markup=markup)
+    except TelegramBadRequest:
+        await message.answer(text, reply_markup=markup)

@@ -8,6 +8,8 @@ from app.models.enums import OrderStatus
 from app.models.order import Order
 from app.repositories.order import OrderRepository
 from app.repositories.order_item import OrderItemRepository
+from app.services.admin.exceptions import InvalidStatusTransitionError
+from app.utils.order_status import allowed_transitions, can_transition
 
 
 class AdminOrderService:
@@ -46,4 +48,20 @@ class AdminOrderService:
         return await self.orders.search(query, limit=limit)
 
     async def set_order_status(self, order: Order, status: OrderStatus) -> Order:
+        """
+        Move an order to ``status``, refusing transitions the lifecycle forbids.
+
+        The keyboard only offers legal moves, but a stale message or a crafted
+        callback could still ask for an illegal one, so the rule is enforced
+        here rather than in the UI.
+        """
+        if order.status is status:
+            return order
+        if not can_transition(order.status, status):
+            raise InvalidStatusTransitionError(order.status, status)
         return await self.orders.update_status(order, status)
+
+    @staticmethod
+    def allowed_next_statuses(order: Order) -> tuple[OrderStatus, ...]:
+        """Statuses this order may move to, in lifecycle order."""
+        return allowed_transitions(order.status)

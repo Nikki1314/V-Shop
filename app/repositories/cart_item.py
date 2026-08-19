@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -67,11 +68,22 @@ class CartItemRepository(BaseRepository[CartItem]):
             new_qty = min(existing.quantity + quantity, MAX_CART_ITEM_QUANTITY)
             return await self.update(existing, quantity=new_qty)
 
-        return await self.create_and_add(
-            cart_id=cart_id,
-            product_id=product_id,
-            quantity=min(quantity, MAX_CART_ITEM_QUANTITY),
-        )
+        try:
+            async with self.session.begin_nested():
+                return await self.create_and_add(
+                    cart_id=cart_id,
+                    product_id=product_id,
+                    quantity=min(quantity, MAX_CART_ITEM_QUANTITY),
+                )
+        except IntegrityError:
+            # A rapid second tap inserted the same line between our SELECT and
+            # INSERT; uq_cart_product rejected ours. Fall back to incrementing
+            # the row that won, so the customer sees quantity 2, not an error.
+            existing = await self.get_by_cart_and_product(cart_id, product_id)
+            if existing is None:
+                raise
+            new_qty = min(existing.quantity + quantity, MAX_CART_ITEM_QUANTITY)
+            return await self.update(existing, quantity=new_qty)
 
     async def set_quantity(self, item: CartItem, quantity: int) -> CartItem | None:
         """Set absolute quantity. Deletes the row when quantity drops below 1."""

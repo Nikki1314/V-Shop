@@ -14,6 +14,7 @@ from app.models.product import Product
 from app.services.admin.catalog import AdminCatalogService
 from app.services.admin.exceptions import (
     CategoryInUseError,
+    InvalidStatusTransitionError,
     ProductInUseError,
     SubcategoryInUseError,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "AdminOrderService",
     "AdminUserService",
     "CategoryInUseError",
+    "InvalidStatusTransitionError",
     "ProductInUseError",
     "SubcategoryInUseError",
 ]
@@ -260,6 +262,10 @@ class AdminService:
 
     async def set_order_status(self, order: Order, status: OrderStatus) -> Order:
         return await self.order_admin.set_order_status(order, status)
+
+    @staticmethod
+    def allowed_next_statuses(order: Order) -> tuple[OrderStatus, ...]:
+        return AdminOrderService.allowed_next_statuses(order)
 
     # --- users / broadcast ---
     async def list_broadcast_recipient_ids(self) -> list[int]:

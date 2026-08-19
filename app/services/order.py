@@ -7,13 +7,14 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import CityChoice, DeliveryType, OrderStatus
+from app.models.enums import CityChoice, DeliveryType, OrderStatus, PaymentMethod
 from app.models.order import Order
 from app.models.user import User
 from app.repositories.cart import CartRepository
 from app.repositories.cart_item import CartItemRepository
 from app.repositories.order import OrderRepository
 from app.repositories.order_item import OrderItemRepository
+from app.repositories.product import ProductRepository
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class OrderService:
         self.order_items = OrderItemRepository(session)
         self.carts = CartRepository(session)
         self.cart_items = CartItemRepository(session)
+        self.products = ProductRepository(session)
 
     async def place_order_from_cart(
         self,
@@ -63,6 +65,7 @@ class OrderService:
         address: str,
         preferred_time: str,
         phone: str | None,
+        payment_method: PaymentMethod | None = None,
     ) -> Order:
         """
         Persist a completed checkout:
@@ -85,15 +88,21 @@ class OrderService:
         if cart is None or not cart.items:
             raise EmptyCartError("Cart is empty")
 
+        # One query decides sellability for the whole cart: a product hidden by
+        # its brand or category must not be sold, only browsed-away.
+        unsellable = await self.products.list_unsellable_ids(
+            [item.product_id for item in cart.items]
+        )
+
         line_items: list[tuple[int, int, Decimal]] = []
         total = Decimal("0")
         for item in cart.items:
             product = item.product
             if product is None:
                 continue
-            if not product.is_active:
+            if product.id in unsellable:
                 raise InactiveProductError(
-                    f"Product {product.id} is inactive and cannot be ordered"
+                    f"Product {product.id} is not available and cannot be ordered"
                 )
             unit_price = Decimal(product.price)
             total += unit_price * item.quantity
@@ -116,6 +125,7 @@ class OrderService:
             address=address.strip(),
             preferred_time=preferred_time.strip(),
             phone=phone,
+            payment_method=payment_method,
             total_price=total,
             status=OrderStatus.NEW,
         )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -32,7 +32,8 @@ from app.keyboards.admin_orders import (
 )
 from app.models.enums import OrderStatus
 from app.models.order import Order
-from app.services.admin import AdminService
+from app.services.admin import AdminService, InvalidStatusTransitionError
+from app.services.customer_notification import CustomerOrderNotificationService
 from app.services.localization import LocalizationService
 from app.states.admin import ADMIN_WIZARD_STATES, SearchOrderStates
 from app.utils.admin_order import format_admin_order_card
@@ -430,13 +431,15 @@ async def change_order_status(
     callback: CallbackQuery,
     i18n: LocalizationService,
     session: AsyncSession,
+    bot: Bot,
 ) -> None:
     if callback.message is None or callback.data is None:
         await callback.answer()
         return
 
+    message = callback.message if isinstance(callback.message, Message) else None
     parsed = _parse_status_callback(callback.data)
-    if parsed is None:
+    if message is None or parsed is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
         return
 
@@ -451,8 +454,32 @@ async def change_order_status(
         await callback.answer()
         return
 
-    order = await admin.set_order_status(order, new_status)
+    try:
+        order = await admin.set_order_status(order, new_status)
+    except InvalidStatusTransitionError:
+        # Stale keyboard or crafted callback: refuse and re-render the truth.
+        await callback.answer(
+            i18n.t(
+                "admin.order_invalid_transition",
+                current=status_label(i18n, order.status),
+                target=status_label(i18n, new_status),
+            ),
+            show_alert=True,
+        )
+        await _send_order_view(
+            message, i18n, order, list_kind=list_kind, page=page, edit=True
+        )
+        return
+    # Commit before telling the customer: they must never hear about a change
+    # that is not durable, and a Telegram failure must not undo it.
+    await session.commit()
+
     order = await admin.get_order(order.id) or order
+    if order.user is not None:
+        await CustomerOrderNotificationService(bot).notify_status_change(
+            order, order.user
+        )
+
     await callback.answer(
         i18n.t(
             "admin.order_status_changed",

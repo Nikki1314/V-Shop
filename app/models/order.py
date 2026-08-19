@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, TimestampMixin
-from app.models.enums import OrderStatus
+from app.models.enums import OrderStatus, PaymentMethod
 from app.models.types import enum_values
 
 if TYPE_CHECKING:
@@ -49,6 +49,16 @@ class Order(Base, TimestampMixin):
     preferred_time: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    payment_method: Mapped[PaymentMethod | None] = mapped_column(
+        Enum(
+            PaymentMethod,
+            name="payment_method",
+            native_enum=False,
+            length=32,
+            values_callable=enum_values,
+        ),
+        nullable=True,
+    )
     status: Mapped[OrderStatus] = mapped_column(
         Enum(
             OrderStatus,

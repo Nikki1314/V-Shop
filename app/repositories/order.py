@@ -200,6 +200,9 @@ class OrderRepository(BaseRepository[Order]):
     async def accept(self, order: Order) -> Order:
         return await self.update_status(order, OrderStatus.ACCEPTED)
 
+    async def ship(self, order: Order) -> Order:
+        return await self.update_status(order, OrderStatus.SHIPPED)
+
     async def complete(self, order: Order) -> Order:
         return await self.update_status(order, OrderStatus.COMPLETED)
 

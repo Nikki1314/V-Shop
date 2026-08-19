@@ -11,6 +11,7 @@ from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
 from app.errors.classify import locale_key_for_error
 from app.services.localization import LocalizationService
+from app.utils.chat_scope import is_private_event
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,18 @@ async def notify_user_of_error(
     bot: Bot | None,
     text: str,
 ) -> None:
-    """Deliver a short safe message; swallow notification failures."""
+    """
+    Deliver a short safe message; swallow notification failures.
+
+    Refuses non-private chats. This runs on paths that can fire *before* the
+    private-chat middleware — aiogram's own error handling, and any failure in
+    an earlier middleware — so without this check a group could be answered by
+    the bot purely because something threw.
+    """
+    if not is_private_event(event):
+        logger.debug("Suppressing error notification for a non-private chat")
+        return
+
     try:
         if isinstance(event, Update):
             if event.callback_query is not None:
@@ -68,7 +80,7 @@ async def _notify_callback(
         logger.debug("Could not answer error callback", exc_info=True)
 
     message = callback.message
-    if isinstance(message, Message):
+    if isinstance(message, Message) and is_private_event(message):
         try:
             await message.answer(text)
             return
