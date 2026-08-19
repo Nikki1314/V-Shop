@@ -6,7 +6,7 @@ from app.services.localization import LocalizationService
 
 
 def admin_menu_keyboard(i18n: LocalizationService) -> ReplyKeyboardMarkup:
-    """Admin panel Reply Keyboard: Products, Categories, Orders, Broadcast, Settings."""
+    """Admin panel Reply Keyboard: Products, Categories, Orders, Broadcast, Stats, Settings."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -17,7 +17,10 @@ def admin_menu_keyboard(i18n: LocalizationService) -> ReplyKeyboardMarkup:
                 KeyboardButton(text=i18n.t("admin.menu_orders")),
                 KeyboardButton(text=i18n.t("admin.menu_broadcast")),
             ],
-            [KeyboardButton(text=i18n.t("admin.menu_settings"))],
+            [
+                KeyboardButton(text=i18n.t("admin.menu_statistics")),
+                KeyboardButton(text=i18n.t("admin.menu_settings")),
+            ],
         ],
         resize_keyboard=True,
     )

@@ -23,6 +23,9 @@ from app.models.user import User
 # Import models so metadata is complete.
 import app.models  # noqa: F401
 
+# Shared seeded shop, used by the statistics service and dashboard suites.
+from tests.shop_dataset import shop, stats  # noqa: F401
+
 
 @pytest_asyncio.fixture
 async def engine() -> AsyncIterator[AsyncEngine]:

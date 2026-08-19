@@ -5,13 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.category import Category, Subcategory
 from app.models.product import Product
 from app.repositories.base import BaseRepository
+from app.repositories.visibility import only_sellable_products
 
 
 class ProductRepository(BaseRepository[Product]):
@@ -144,32 +145,23 @@ class ProductRepository(BaseRepository[Product]):
         """
         Of the given products, which must not be sold.
 
-        A product is unsellable when it is inactive, or when it sits in the
-        hierarchy under a hidden brand or category. Pre-hierarchy rows carry no
-        brand, so the LEFT JOINs leave them untouched and they stay sellable.
+        Expressed as the complement of :func:`only_sellable_products` rather than
+        as its own negated condition, so this checkout guard and the statistics
+        rankings can never disagree about what "on sale" means. Asserted over the
+        full state matrix by ``tests/test_visibility.py``.
         One query, never N+1.
         """
         if not product_ids:
             return set()
         rows = await self.session.scalars(
-            select(Product.id)
-            .outerjoin(Subcategory, Subcategory.id == Product.subcategory_id)
-            .outerjoin(Category, Category.id == Subcategory.category_id)
-            .where(
-                Product.id.in_(product_ids),
-                or_(
-                    Product.is_active.is_(False),
-                    and_(
-                        Product.subcategory_id.is_not(None),
-                        or_(
-                            Subcategory.is_active.is_(False),
-                            Category.is_active.is_(False),
-                        ),
-                    ),
-                ),
+            only_sellable_products(select(Product.id)).where(
+                Product.id.in_(product_ids)
             )
         )
-        return set(rows.all())
+        # An id that matches no row at all — a product deleted between adding it
+        # to the cart and checking out — is absent from `sellable` and therefore
+        # reported unsellable, which is the safe answer.
+        return set(product_ids) - set(rows.all())
 
     async def list_with_parents(
         self,

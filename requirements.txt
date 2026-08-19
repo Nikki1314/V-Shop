@@ -6,3 +6,6 @@ alembic>=1.14.0
 pydantic>=2.10.0
 pydantic-settings>=2.6.0
 python-dotenv>=1.0.1
+# IANA time zone database: zoneinfo has no system tzdata on Windows
+# or on slim images, and APP_TIMEZONE month boundaries depend on it.
+tzdata>=2024.1

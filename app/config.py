@@ -7,6 +7,8 @@ from typing import Annotated
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app.utils.periods import DEFAULT_TIMEZONE
+
 
 def _parse_admin_ids(value: object) -> list[int]:
     """Accept comma-separated strings, JSON lists, or native lists for ADMIN_IDS."""
@@ -69,6 +71,21 @@ class Settings(BaseSettings):
         description=(
             "Optional pre-made invite link. Used verbatim when set, so the "
             "feature works even if the bot cannot create links itself."
+        ),
+    )
+    app_timezone: str = Field(
+        default=DEFAULT_TIMEZONE,
+        description=(
+            "IANA zone used for statistics month boundaries. Never rely on the "
+            "server clock: a Berlin shop and a UTC server disagree for one or "
+            "two hours every day."
+        ),
+    )
+    currency_symbol: str = Field(
+        default="€",
+        description=(
+            "Currency shown next to money figures. Placement follows the "
+            "language: '€12.34' in English, '12,34 €' in German/Russian/Ukrainian."
         ),
     )
     app_env: str = Field(default="development", description="Application environment name")

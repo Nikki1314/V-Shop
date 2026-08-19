@@ -54,6 +54,67 @@ Product images use Telegram `file_id` from the uploaded photo.
 
 ---
 
+## Statistics
+
+`📊 Statistics` on the admin panel. Private admin chats only — the button is
+absent from every customer keyboard, the router sits behind `IsAdmin` plus
+`AdminOnlyMiddleware`, and group traffic is dropped before it reaches any
+handler.
+
+The dashboard is one message:
+
+| Section | Contents |
+|---|---|
+| General | users, categories, subcategories, products, total orders |
+| Orders | all time / this month / last month, each total ✅ completed ❌ cancelled |
+| Revenue | all time / this month / last month, **completed orders only** |
+| Products | top 3 most ordered and top 3 least ordered |
+
+Product rankings count **distinct completed orders** containing the product, not
+units sold: an order holding five of an item counts once. Only products that are
+on sale are ranked (see [What "on sale" means](#what-on-sale-means)), and a
+product with zero completed orders qualifies for the bottom list — that is what
+the list is for.
+
+Month boundaries follow `APP_TIMEZONE` (default `Europe/Berlin`), not the server
+clock, so an order placed at 00:30 local on the 1st belongs to the new month.
+The header shows the month and zone the figures were cut with.
+
+Money is punctuated the way the reader's language writes numbers — `€1,234.56`
+in English, `1.234,56 €` in German, `1 234,56 €` in Russian and Ukrainian. The
+symbol itself comes from `CURRENCY_SYMBOL`.
+
+Product names longer than 26 characters are trimmed at the nearest word with an
+ellipsis, so a ranked list stays one line per entry. Without that a single long
+name wraps to three rows and the numbering stops reading as a list.
+
+`🔄 Refresh` redraws in place. If nothing has changed since the last tap the
+message stays as it is — Telegram rejects an unchanged edit, and that is not an
+error.
+
+Empty states are distinct on purpose: an empty catalog says there are no
+products, while a stocked catalog with no completed sales says nothing has sold
+yet.
+
+### What "on sale" means
+
+A product is on sale only when **all three** are active: the product, its
+category, and — if it has one — its subcategory. Disabling a category or a
+subcategory therefore takes every product under it off the shelf without
+touching the product rows, and re-enabling puts them straight back.
+
+The rule is defined once, in `app/repositories/visibility.py`, and applies
+everywhere the question is asked: catalog browsing, the checkout guard (an item
+that went off sale while sitting in a cart is refused), and the statistics
+top/bottom product rankings. A product a customer cannot buy never appears in
+the best- or worst-seller lists, because "not selling" and "not on sale" are
+different problems.
+
+Products created before the category → subcategory → product hierarchy carry no
+subcategory. They are judged on their category alone.
+
+---
+
 ## Categories
 
 1. Open **Categories**

@@ -76,8 +76,16 @@ def test_ukrainian_covers_every_user_facing_area() -> None:
 
 
 def test_ukrainian_preserves_format_placeholders() -> None:
-    """A mistranslated placeholder would silently break message rendering."""
+    """
+    A mistranslated placeholder would silently break message rendering.
+
+    Compared as sets, not sequences: reordering placeholders is legitimate
+    translation work — ``€{amount}`` becomes ``{amount} €`` — while inventing or
+    dropping one is the failure this guards against. Counts are compared too, so
+    a placeholder repeated in one language and not the other still fails.
+    """
     import re
+    from collections import Counter
 
     uk, en = locale_keys("uk"), locale_keys("en")
     assert uk == en
@@ -86,7 +94,9 @@ def test_ukrainian_preserves_format_placeholders() -> None:
     uk_cat, en_cat = load_locale("uk"), load_locale("en")
     pattern = re.compile(r"\{(\w+)\}")
     for key in sorted(uk_cat):
-        assert pattern.findall(uk_cat[key]) == pattern.findall(en_cat[key]), key
+        assert Counter(pattern.findall(uk_cat[key])) == Counter(
+            pattern.findall(en_cat[key])
+        ), key
 
 
 # --------------------------------------------------------------- selecting

@@ -37,8 +37,22 @@ Admin IDs also receive new-order notifications in private chat (deduplicated wit
 | `APP_ENV` | string | `development` | Environment name; `development` / `dev` / `local` enable SQL echo |
 | `LOG_LEVEL` | string | `INFO` | Root logging level (`DEBUG`, `INFO`, `WARNING`, …) |
 | `TELEGRAM_SSL_VERIFY` | bool | `true` | Verify TLS when calling `api.telegram.org` |
+| `APP_TIMEZONE` | string | `Europe/Berlin` | IANA zone used for statistics month boundaries |
+| `CURRENCY_SYMBOL` | string | `€` | Symbol shown beside money figures on the statistics dashboard |
 
 Set `TELEGRAM_SSL_VERIFY=false` only if a local network intercepts HTTPS. Never disable verification in production.
+
+`APP_TIMEZONE` decides when a reporting month starts and ends. With the default,
+an order placed at 00:30 Berlin time on 1 September belongs to September even
+though it is still 31 August in UTC. An unrecognised zone name does not stop the
+bot: it logs and falls back to `Europe/Berlin`, then to UTC. The zone database
+ships with the `tzdata` package (a pinned dependency), so the value resolves the
+same way on Windows, Alpine and Debian.
+
+`CURRENCY_SYMBOL` sets the symbol only; where it sits and how the number is
+punctuated follow the reader's language — `€1,234.56` in English, `1.234,56 €`
+in German, `1 234,56 €` in Russian and Ukrainian. Those conventions live in the
+`format` section of each locale catalog.
 
 ## Docker Compose extras
 

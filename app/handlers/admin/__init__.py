@@ -12,6 +12,7 @@ from app.handlers.admin import (
     product_manage,
     products,
     settings as admin_settings,
+    statistics,
     subcategories,
     wizard_guard,
 )
@@ -43,6 +44,7 @@ def get_admin_router(settings: Settings | None = None) -> Router:
     router.include_router(subcategories.router)
     router.include_router(orders.router)
     router.include_router(broadcast.router)
+    router.include_router(statistics.router)
     router.include_router(admin_settings.router)
     router.include_router(panel.router)
     return router

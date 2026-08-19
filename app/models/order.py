@@ -90,6 +90,9 @@ class OrderItem(Base):
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_order_items_quantity_positive"),
         CheckConstraint("price >= 0", name="ck_order_items_price_non_negative"),
+        # Serves the popularity query: GROUP BY product_id with
+        # COUNT(DISTINCT order_id) is answered from this index alone.
+        Index("ix_order_items_product_id_order_id", "product_id", "order_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -101,7 +104,8 @@ class OrderItem(Base):
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="RESTRICT"),
         nullable=False,
-        index=True,
+        # No single-column index: ix_order_items_product_id_order_id below leads
+        # with product_id and serves every lookup on it.
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
