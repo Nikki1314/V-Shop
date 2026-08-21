@@ -69,8 +69,7 @@ def test_the_dataset_covers_every_required_case() -> None:
     assert max(q for *_, lines in ORDERS for _, q in lines) > 1, "a line with many units"
 
     repeated = [
-        label for label, _, _, _, lines in ORDERS
-        if len({key for key, _ in lines}) < len(lines)
+        label for label, _, _, _, lines in ORDERS if len({key for key, _ in lines}) < len(lines)
     ]
     assert repeated == ["jul-two-lines"], "one order repeats a product across lines"
 
@@ -103,9 +102,7 @@ def test_the_suite_never_reads_the_wall_clock() -> None:
     for path in sources:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
-            if not (
-                isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-            ):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
                 continue
             where = f"{path.name}:{node.lineno}"
             if node.func.attr in banned:
@@ -114,8 +111,7 @@ def test_the_suite_never_reads_the_wall_clock() -> None:
                 collects.append(where)
                 if not (node.args or node.keywords):
                     offenders.append(
-                        f"{where} collect() without an explicit moment falls back "
-                        "to datetime.now()"
+                        f"{where} collect() without an explicit moment falls back to datetime.now()"
                     )
 
     assert collects, "sanity: the suite should call collect()"
@@ -211,9 +207,7 @@ async def test_orders_split_exactly_at_local_midnight(stats: ShopStatistics) -> 
 
 
 @pytest.mark.asyncio
-async def test_a_different_zone_moves_the_boundary(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_a_different_zone_moves_the_boundary(session: AsyncSession, shop: Shop) -> None:
     september = datetime(2026, 9, 15, 12, 0, tzinfo=BERLIN)
 
     berlin = await StatisticsService(session, "Europe/Berlin").collect(september)
@@ -221,12 +215,8 @@ async def test_a_different_zone_moves_the_boundary(
 
     assert berlin.timezone == "Europe/Berlin"
     assert honolulu.timezone == "Pacific/Honolulu"
-    assert berlin.bounds.current_start.astimezone(UTC) == datetime(
-        2026, 8, 31, 22, 0, tzinfo=UTC
-    )
-    assert honolulu.bounds.current_start.astimezone(UTC) == datetime(
-        2026, 9, 1, 10, 0, tzinfo=UTC
-    )
+    assert berlin.bounds.current_start.astimezone(UTC) == datetime(2026, 8, 31, 22, 0, tzinfo=UTC)
+    assert honolulu.bounds.current_start.astimezone(UTC) == datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
 
 
 class _RecordingStats(StatisticsRepository):
@@ -358,14 +348,10 @@ async def test_revenue_ignores_every_non_completed_status(
 
 
 @pytest.mark.asyncio
-async def test_revenue_uses_the_stored_order_total(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_revenue_uses_the_stored_order_total(session: AsyncSession, shop: Shop) -> None:
     """Repricing a product must not move historical revenue."""
     before = (await StatisticsService(session).collect(NOW)).all_time.revenue
-    await AdminService(session).set_product_price(
-        shop.products["mango"], Decimal("999.00")
-    )
+    await AdminService(session).set_product_price(shop.products["mango"], Decimal("999.00"))
     await session.flush()
 
     after = (await StatisticsService(session).collect(NOW)).all_time.revenue
@@ -403,22 +389,17 @@ async def test_popularity_counts_distinct_orders_not_units(
     berry_units = sum(q for *_, lines in ORDERS for key, q in lines if key == "berry")
     assert berry_units == 9, "the dataset really does sell berry many times over"
 
-    counts = dict(
-        names(await StatisticsRepository(session).most_ordered_products(limit=6))
-    )
+    counts = dict(names(await StatisticsRepository(session).most_ordered_products(limit=6)))
 
     assert counts["berry"] == 4, "4 distinct completed orders, not 9 units"
     assert counts["mango"] == 5, "5 distinct completed orders, not 6 completed units"
 
 
 @pytest.mark.asyncio
-async def test_only_completed_orders_feed_popularity(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_only_completed_orders_feed_popularity(session: AsyncSession, shop: Shop) -> None:
     """``mint`` appears in a cancelled and a new order, and must count zero."""
     mint_orders = [
-        label for label, _, _, _, lines in ORDERS
-        if any(key == "mint" for key, _ in lines)
+        label for label, _, _, _, lines in ORDERS if any(key == "mint" for key, _ in lines)
     ]
     assert mint_orders == ["jul-cancelled", "aug-new", "aug-cancelled"]
 
@@ -437,9 +418,7 @@ async def test_zero_order_products_qualify_for_the_bottom_list(
     """``void`` has never been in any order at all — that is the point of the list."""
     least = await StatisticsRepository(session).least_ordered_products(limit=6)
 
-    assert names(least) == [
-        ("mint", 0), ("void", 0), ("ice", 1), ("berry", 4), ("mango", 5)
-    ]
+    assert names(least) == [("mint", 0), ("void", 0), ("ice", 1), ("berry", 4), ("mango", 5)]
     assert "ghost" not in {row.name_en for row in least}, "inactive products excluded"
 
 
@@ -532,24 +511,38 @@ async def test_a_product_with_no_brand_is_judged_on_its_category(
     """
     admin = AdminService(session)
     common = dict(
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("10.00"),
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("10.00"),
     )
     legacy = await admin.create_product(
         category_id=shop.active_category.id,
-        name_ru="legacy", name_en="legacy", name_de="legacy", name_uk="legacy",
+        name_ru="legacy",
+        name_en="legacy",
+        name_de="legacy",
+        name_uk="legacy",
         **common,
     )
     stranded = await admin.create_product(
         category_id=shop.disabled_category.id,
-        name_ru="stranded", name_en="stranded", name_de="stranded", name_uk="stranded",
+        name_ru="stranded",
+        name_en="stranded",
+        name_de="stranded",
+        name_uk="stranded",
         **common,
     )
     await session.flush()
     assert legacy.subcategory_id is None and stranded.subcategory_id is None
 
-    listed = {row.product_id for row in
-              await StatisticsRepository(session).least_ordered_products(limit=99)}
+    listed = {
+        row.product_id
+        for row in await StatisticsRepository(session).least_ordered_products(limit=99)
+    }
 
     assert legacy.id in listed, "no brand is not a reason to hide a product"
     assert stranded.id not in listed, "its category is deactivated"
@@ -587,10 +580,17 @@ async def test_a_shop_with_no_completed_orders_still_ranks(
     for name in ("a", "b", "c", "d"):
         await admin.create_product(
             category_id=category.id,
-            name_ru=name, name_en=name, name_de=name, name_uk=name,
-            description_ru="d", description_en="d",
-            description_de="d", description_uk="d",
-            flavor="f", volume="30ml", nicotine_strength="3mg",
+            name_ru=name,
+            name_en=name,
+            name_de=name,
+            name_uk=name,
+            description_ru="d",
+            description_en="d",
+            description_de="d",
+            description_uk="d",
+            flavor="f",
+            volume="30ml",
+            nicotine_strength="3mg",
             price=Decimal("10.00"),
         )
     await session.flush()
@@ -613,9 +613,7 @@ def _select_recorder(sink: list[str]):  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.asyncio
-async def test_every_figure_is_aggregated_in_sql(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_every_figure_is_aggregated_in_sql(session: AsyncSession, shop: Shop) -> None:
     """The dashboard must not stream order history into the bot process."""
     statements: list[str] = []
     engine = session.get_bind()
@@ -629,10 +627,9 @@ async def test_every_figure_is_aggregated_in_sql(
 
     assert collected.all_time.orders.total == 18
     assert len(statements) <= 10, f"{len(statements)} queries for one dashboard"
-    assert all(
-        any(token in sql.upper() for token in ("COUNT(", "SUM("))
-        for sql in statements
-    ), "a statistic was computed by reading rows"
+    assert all(any(token in sql.upper() for token in ("COUNT(", "SUM(")) for sql in statements), (
+        "a statistic was computed by reading rows"
+    )
 
 
 @pytest.mark.asyncio
@@ -654,18 +651,26 @@ async def test_query_count_is_independent_of_history_size(
 
     for index in range(40):
         order = Order(
-            user_id=shop.orders["aug-multi-qty"].user_id, customer_name="QA",
-            city="berlin", delivery_type="pickup", address="X",
-            preferred_time="18:00", phone=None, total_price=Decimal("10.00"),
-            status=OrderStatus.COMPLETED, payment_method=PaymentMethod.CASH,
+            user_id=shop.orders["aug-multi-qty"].user_id,
+            customer_name="QA",
+            city="berlin",
+            delivery_type="pickup",
+            address="X",
+            preferred_time="18:00",
+            phone=None,
+            total_price=Decimal("10.00"),
+            status=OrderStatus.COMPLETED,
+            payment_method=PaymentMethod.CASH,
             created_at=at(8, 12, 0, index % 60),
         )
         session.add(order)
         await session.flush()
         session.add(
             OrderItem(
-                order_id=order.id, product_id=shop.products["void"].id,
-                quantity=1, price=Decimal("10.00"),
+                order_id=order.id,
+                product_id=shop.products["void"].id,
+                quantity=1,
+                price=Decimal("10.00"),
             )
         )
     await session.flush()

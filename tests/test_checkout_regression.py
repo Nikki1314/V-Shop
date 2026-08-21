@@ -56,12 +56,8 @@ PATHS = [
 
 async def _cart(session: AsyncSession, telegram_id: int, city: CityChoice):  # type: ignore[no-untyped-def]
     category = await make_category(session, name="Liquids")
-    product = await make_product(
-        session, category, name_en="Mango", price=str(UNIT_PRICE)
-    )
-    user = await make_user(
-        session, telegram_id=telegram_id, language=LanguageCode.EN, city=city
-    )
+    product = await make_product(session, category, name_en="Mango", price=str(UNIT_PRICE))
+    user = await make_user(session, telegram_id=telegram_id, language=LanguageCode.EN, city=city)
     await session.flush()
     await CartService(session).add_product(user.id, product, quantity=2)
     await session.flush()
@@ -125,12 +121,8 @@ def test_path_matrix_is_complete() -> None:
 
 @pytest.mark.parametrize("city", list(CityChoice))
 @pytest.mark.parametrize("delivery", list(DeliveryType))
-def test_delivery_matrix_matches_the_rules(
-    city: CityChoice, delivery: DeliveryType
-) -> None:
-    assert delivery_allowed_for_city(city, delivery.value) is (
-        delivery in ALLOWED[city]
-    )
+def test_delivery_matrix_matches_the_rules(city: CityChoice, delivery: DeliveryType) -> None:
+    assert delivery_allowed_for_city(city, delivery.value) is (delivery in ALLOWED[city])
 
 
 @pytest.mark.parametrize(
@@ -161,9 +153,7 @@ async def test_forbidden_delivery_is_rejected_server_side(
 def test_delivery_keyboard_offers_only_valid_methods(city: CityChoice) -> None:
     i18n = LocalizationService.from_code("en")
     payloads = [
-        b.callback_data
-        for row in delivery_keyboard(i18n, city).inline_keyboard
-        for b in row
+        b.callback_data for row in delivery_keyboard(i18n, city).inline_keyboard for b in row
     ]
     offered = {
         p.removeprefix(CALLBACK_DELIVERY_PREFIX)
@@ -187,9 +177,7 @@ async def test_payment_method_persists_exactly(
     await session.flush()
     order_id = order.id
 
-    raw = await session.scalar(
-        select(Order.payment_method).where(Order.id == order_id)
-    )
+    raw = await session.scalar(select(Order.payment_method).where(Order.id == order_id))
     assert raw is payment
     assert PaymentMethod(raw).value == payment.value
 
@@ -241,9 +229,7 @@ async def test_second_confirmation_finds_an_empty_cart(
     with pytest.raises(EmptyCartError):
         await _place(session, user, DeliveryType.PICKUP, PaymentMethod.CASH)
 
-    orders = (
-        await session.scalars(select(Order).where(Order.user_id == user.id))
-    ).all()
+    orders = (await session.scalars(select(Order).where(Order.user_id == user.id))).all()
     assert [o.id for o in orders] == [first.id]
 
 
@@ -333,9 +319,9 @@ async def test_repeated_payment_selection_is_harmless(
 
     chosen = PaymentMethod.CASH
     for _ in range(5):
-        chosen = PaymentMethod(f"{CALLBACK_PAYMENT_PREFIX}card".removeprefix(
-            CALLBACK_PAYMENT_PREFIX
-        ))
+        chosen = PaymentMethod(
+            f"{CALLBACK_PAYMENT_PREFIX}card".removeprefix(CALLBACK_PAYMENT_PREFIX)
+        )
     order = await _place(session, user, DeliveryType.PICKUP, chosen)
     await session.flush()
 
@@ -351,9 +337,7 @@ def test_summary_shows_the_whole_order(
 ) -> None:
     i18n = LocalizationService.from_code("en")
     user = type("U", (), {"selected_city": city})()
-    line = type(
-        "L", (), {"name": "Mango", "quantity": 2, "line_total": UNIT_PRICE * 2}
-    )()
+    line = type("L", (), {"name": "Mango", "quantity": 2, "line_total": UNIT_PRICE * 2})()
     view = type("V", (), {"lines": [line], "total": UNIT_PRICE * 2})()
     data = {
         "customer_name": "Regression QA",

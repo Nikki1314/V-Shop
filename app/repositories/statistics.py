@@ -66,10 +66,7 @@ class StatisticsRepository:
             .where(Category.is_active.is_(True))
             .scalar_subquery()
             .label("active_categories"),
-            select(func.count())
-            .select_from(Subcategory)
-            .scalar_subquery()
-            .label("subcategories"),
+            select(func.count()).select_from(Subcategory).scalar_subquery().label("subcategories"),
             select(func.count())
             .select_from(Subcategory)
             .where(Subcategory.is_active.is_(True))

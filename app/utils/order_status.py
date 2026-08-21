@@ -43,9 +43,7 @@ ALLOWED_TRANSITIONS: dict[OrderStatus, frozenset[OrderStatus]] = {
 
 # Stated explicitly rather than derived from the table: Cancelled has an undo
 # path, but it is emphatically not an order still being fulfilled.
-ACTIVE_STATUSES = frozenset(
-    {OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.SHIPPED}
-)
+ACTIVE_STATUSES = frozenset({OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.SHIPPED})
 # Statuses no move can leave.
 TERMINAL_STATUSES = frozenset(
     status for status, targets in ALLOWED_TRANSITIONS.items() if not targets

@@ -31,9 +31,7 @@ def categories_keyboard(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=truncate_button_label(
-                        localized_category_name(category, language)
-                    ),
+                    text=truncate_button_label(localized_category_name(category, language)),
                     callback_data=f"{CALLBACK_CATEGORY_PREFIX}{category.id}",
                 )
             ]
@@ -50,9 +48,7 @@ def subcategories_keyboard(
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text=truncate_button_label(
-                    localized_category_name(subcategory, i18n.language)
-                ),
+                text=truncate_button_label(localized_category_name(subcategory, i18n.language)),
                 callback_data=f"{CALLBACK_SUBCATEGORY_PREFIX}{subcategory.id}",
             )
         ]
@@ -79,9 +75,7 @@ def products_keyboard(
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text=truncate_button_label(
-                    localized_product_name(product, i18n.language)
-                ),
+                text=truncate_button_label(localized_product_name(product, i18n.language)),
                 callback_data=f"{CALLBACK_PRODUCT_PREFIX}{product.id}",
             )
         ]

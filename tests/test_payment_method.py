@@ -32,8 +32,10 @@ async def _ready_cart(session: AsyncSession, telegram_id: int):  # type: ignore[
     category = await make_category(session, name="Liquids")
     product = await make_product(session, category, name_en="Mango", price="18.00")
     user = await make_user(
-        session, telegram_id=telegram_id,
-        language=LanguageCode.EN, city=CityChoice.BERLIN,
+        session,
+        telegram_id=telegram_id,
+        language=LanguageCode.EN,
+        city=CityChoice.BERLIN,
     )
     await session.flush()
     await CartService(session).add_product(user.id, product, quantity=1)
@@ -81,8 +83,12 @@ def test_payment_labels_are_translated_per_language() -> None:
     in both), so identical ru/uk output is not evidence of a missing
     translation. What must always differ is across script families.
     """
-    for key in ("checkout.payment_cash", "checkout.payment_card",
-                "checkout.ask_payment", "checkout.summary_payment"):
+    for key in (
+        "checkout.payment_cash",
+        "checkout.payment_card",
+        "checkout.ask_payment",
+        "checkout.summary_payment",
+    ):
         rendered = {c: LocalizationService.from_code(c).t(key) for c in LANGS}
         for code, value in rendered.items():
             assert value and not value.startswith("checkout."), f"{key} ({code})"
@@ -98,9 +104,7 @@ def test_payment_labels_are_translated_per_language() -> None:
 
 def test_summary_payment_keeps_its_placeholder() -> None:
     for code in LANGS:
-        assert "{payment}" in LocalizationService.from_code(code).t(
-            "checkout.summary_payment"
-        )
+        assert "{payment}" in LocalizationService.from_code(code).t("checkout.summary_payment")
 
 
 # ----------------------------------------------------------------- storage
@@ -126,9 +130,7 @@ async def test_payment_method_is_stored_on_the_order(
 
     assert order.payment_method is method
 
-    stored = await session.scalar(
-        select(Order.payment_method).where(Order.id == order.id)
-    )
+    stored = await session.scalar(select(Order.payment_method).where(Order.id == order.id))
     assert stored is method
     assert PaymentMethod(stored).value == method.value
 
@@ -137,8 +139,13 @@ async def test_payment_method_is_stored_on_the_order(
 async def test_payment_method_survives_a_reload(session: AsyncSession) -> None:
     user, _product = await _ready_cart(session, 9010)
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="A",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CARD,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="A",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CARD,
     )
     order_id = order.id
     await session.flush()
@@ -174,8 +181,13 @@ def test_order_confirmation_summary_shows_payment(language: str) -> None:
 async def test_manager_notification_shows_payment(session: AsyncSession) -> None:
     user, _product = await _ready_cart(session, 9020)
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="A",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CARD,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="A",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CARD,
     )
     await session.flush()
 
@@ -189,13 +201,16 @@ async def test_manager_notification_shows_payment(session: AsyncSession) -> None
 
 @pytest.mark.parametrize("language", LANGS)
 @pytest.mark.asyncio
-async def test_admin_order_view_shows_payment(
-    session: AsyncSession, language: str
-) -> None:
+async def test_admin_order_view_shows_payment(session: AsyncSession, language: str) -> None:
     user, _product = await _ready_cart(session, 9030 + LANGS.index(language))
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="A",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CASH,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="A",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CASH,
     )
     await session.flush()
 
@@ -215,8 +230,12 @@ async def test_orders_placed_before_the_step_remain_valid(
     """The column is nullable, so historical orders keep working untouched."""
     user, _product = await _ready_cart(session, 9040)
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="Legacy", delivery_type="pickup", address="A",
-        preferred_time="18:00", phone=None,  # no payment method supplied
+        user,
+        customer_name="Legacy",
+        delivery_type="pickup",
+        address="A",
+        preferred_time="18:00",
+        phone=None,  # no payment method supplied
     )
     await session.flush()
 
@@ -232,8 +251,12 @@ async def test_legacy_order_renders_a_localized_fallback(
 ) -> None:
     user, _product = await _ready_cart(session, 9050 + LANGS.index(language))
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="Legacy", delivery_type="pickup", address="A",
-        preferred_time="18:00", phone=None,
+        user,
+        customer_name="Legacy",
+        delivery_type="pickup",
+        address="A",
+        preferred_time="18:00",
+        phone=None,
     )
     await session.flush()
 

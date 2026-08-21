@@ -25,9 +25,7 @@ from app.utils.cache import invalidate_categories_cache
 from app.utils.product_display import format_product_card
 
 LANGS = ("ru", "en", "de", "uk")
-BASE = dict(
-    flavor="Tropic", volume="60ml", nicotine_strength="6mg", price=Decimal("18.00")
-)
+BASE = dict(flavor="Tropic", volume="60ml", nicotine_strength="6mg", price=Decimal("18.00"))
 
 
 @pytest.fixture(autouse=True)
@@ -47,10 +45,16 @@ async def _shop(session: AsyncSession, *, with_photo: bool = True):  # type: ign
     )
     await session.flush()
     product = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="Смачно", description_en="Tasty",
-        description_de="Lecker", description_uk="Смачно UA",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="Смачно",
+        description_en="Tasty",
+        description_de="Lecker",
+        description_uk="Смачно UA",
         image_file_id="AgACPHOTO" if with_photo else None,
         **BASE,
     )
@@ -67,13 +71,13 @@ async def test_card_shows_every_required_field(session: AsyncSession) -> None:
 
     card = format_product_card(product, LocalizationService.from_code("en"))
 
-    assert "Mango" in card              # localized name
-    assert "Tasty" in card              # localized description
-    assert "Tropic" in card             # flavor
-    assert "60ml" in card               # volume
-    assert "6mg" in card                # nicotine strength
-    assert "18.00" in card              # price
-    assert "{" not in card              # nothing unfilled
+    assert "Mango" in card  # localized name
+    assert "Tasty" in card  # localized description
+    assert "Tropic" in card  # flavor
+    assert "60ml" in card  # volume
+    assert "6mg" in card  # nicotine strength
+    assert "18.00" in card  # price
+    assert "{" not in card  # nothing unfilled
 
 
 @pytest.mark.asyncio
@@ -128,9 +132,10 @@ def test_card_buttons_are_localized_not_hardcoded() -> None:
     seen: set[tuple[str, ...]] = set()
     for code in LANGS:
         labels = tuple(
-            t for t, _ in _rows(add_to_cart_keyboard(
-                LocalizationService.from_code(code), 1, subcategory_id=2
-            ))
+            t
+            for t, _ in _rows(
+                add_to_cart_keyboard(LocalizationService.from_code(code), 1, subcategory_id=2)
+            )
         )
         assert len(labels) == 3
         seen.add(labels)
@@ -141,9 +146,10 @@ def test_card_buttons_are_localized_not_hardcoded() -> None:
 def test_card_buttons_carry_the_required_icons() -> None:
     for code in LANGS:
         labels = [
-            t for t, _ in _rows(add_to_cart_keyboard(
-                LocalizationService.from_code(code), 1, subcategory_id=2
-            ))
+            t
+            for t, _ in _rows(
+                add_to_cart_keyboard(LocalizationService.from_code(code), 1, subcategory_id=2)
+            )
         ]
         assert labels[0].startswith("📥")
         assert labels[1].startswith("🛒")
@@ -162,9 +168,7 @@ async def test_adding_to_cart_returns_to_the_same_brand(
     i18n = LocalizationService.from_code("en")
 
     payloads = [
-        d for _, d in _rows(
-            product_added_keyboard(i18n, subcategory_id=product.subcategory_id)
-        )
+        d for _, d in _rows(product_added_keyboard(i18n, subcategory_id=product.subcategory_id))
     ]
     assert payloads[0] == f"{CALLBACK_SUBCATEGORY_PREFIX}{brand.id}"
     assert CALLBACK_CART_OPEN in payloads
@@ -172,9 +176,7 @@ async def test_adding_to_cart_returns_to_the_same_brand(
 
 
 def test_added_keyboard_falls_back_when_context_is_unknown() -> None:
-    payloads = [d for _, d in _rows(product_added_keyboard(
-        LocalizationService.from_code("en")
-    ))]
+    payloads = [d for _, d in _rows(product_added_keyboard(LocalizationService.from_code("en")))]
     assert payloads[0] == CALLBACK_CONTINUE_SHOPPING
     assert CALLBACK_CART_OPEN in payloads
 
@@ -227,8 +229,12 @@ async def test_legacy_product_without_a_brand_stays_buyable(
     await session.flush()
     legacy = await admin.create_product(
         category_id=category.id,
-        name_ru="Старый", name_en="Legacy", name_de="Legacy DE",
-        description_ru="о", description_en="d", description_de="b",
+        name_ru="Старый",
+        name_en="Legacy",
+        name_de="Legacy DE",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
         **BASE,
     )
     await session.flush()
@@ -263,9 +269,7 @@ async def test_all_navigation_paths_round_trip(session: AsyncSession) -> None:
 
     # up: card -> products -> brands -> categories
     back_from_card = [
-        d for _, d in _rows(
-            add_to_cart_keyboard(i18n, card.id, subcategory_id=card.subcategory_id)
-        )
+        d for _, d in _rows(add_to_cart_keyboard(i18n, card.id, subcategory_id=card.subcategory_id))
     ][-1]
     assert back_from_card == f"{CALLBACK_SUBCATEGORY_PREFIX}{brand.id}"
 
@@ -292,9 +296,7 @@ async def test_add_then_continue_then_back_up(session: AsyncSession) -> None:
     catalog = CatalogService(session)
 
     continue_target = [
-        d for _, d in _rows(
-            product_added_keyboard(i18n, subcategory_id=product.subcategory_id)
-        )
+        d for _, d in _rows(product_added_keyboard(i18n, subcategory_id=product.subcategory_id))
     ][0]
     assert continue_target == f"{CALLBACK_SUBCATEGORY_PREFIX}{brand.id}"
 

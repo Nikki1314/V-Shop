@@ -38,14 +38,72 @@ Dependencies point inward. Handlers do not talk to SQLAlchemy sessions for busin
 
 ## Middleware order
 
-Registered as outer update middlewares (first = outermost):
+Registered as outer update middlewares in `app/middlewares/__init__.py`
+(first = outermost). **The order is load-bearing, not cosmetic.**
 
-1. **Logging** — timing / request log
-2. **Error handling** — catch handler failures, answer with safe text
-3. **Database** — open `AsyncSession`, commit on success, rollback on error, close
-4. **Localization** — load `db_user`, inject `i18n` / `language`
+1. **Logging** — timing / request log (`update_id`, kind, `user_id`, duration only;
+   never message text or payloads)
+2. **PrivateChat** — drops anything that is not a private chat
+3. **Error handling** — catches handler failures, answers with safe localized text
+4. **Database** — opens `AsyncSession`, commits on success, rolls back on error, closes
+5. **Localization** — loads `db_user`, injects `i18n` / `language`
+
+Why 2 sits where it does:
+
+- **Ahead of Database**, so a group update never opens a session or starts a
+  transaction.
+- **Ahead of Error handling**, so a failure further down can never produce a
+  reply *into* a group.
 
 Dispatcher-level `errors` handlers act as a final safety net.
+
+## Group-chat isolation
+
+The bot processes user and admin interactions **only in private chats**. Manager
+and review groups are notification destinations, never interfaces.
+
+Enforced centrally, in three places that each close a different route:
+
+| Layer | What it stops |
+|---|---|
+| `PrivateChatMiddleware` (outer, position 2) | every message and callback from a group, supergroup or channel |
+| `notify_user_of_error` | the error notifier answering into a group when aiogram handles an update itself |
+| `UserRepository.list_telegram_ids()` | broadcasts reaching a chat recorded with a negative (group) ID |
+
+Outbound notifications still go to `MANAGER_CHAT_ID`, and carry **no inline
+keyboards** — a group must never be given buttons to press.
+
+## Customer order status notifications
+
+When an admin changes an order's status, the customer is messaged in the language
+stored on their user row — not the admin's.
+
+- Notified on `Accepted`, `Shipped`, `Completed`, `Cancelled`.
+- **Not** notified on `Cancelled → New` (the undo), and never when a status is
+  re-applied unchanged.
+- Delivery is best-effort and isolated: `notify_status_change` never raises, so a
+  blocked user or a Telegram outage **cannot roll back the status change**. A
+  blocked or deleted user logs at INFO; anything unexpected logs at ERROR.
+
+Implementation: `app/services/customer_notification.py`.
+
+## Statistics
+
+`StatisticsService` assembles the admin dashboard from **nine aggregate queries**
+whose count does not grow with order history — no order rows are loaded into the
+process. Month boundaries are cut in `APP_TIMEZONE` (default `Europe/Berlin`),
+so an order placed at 00:30 local on the 1st belongs to the new month even though
+it is still the previous month in UTC.
+
+Product rankings count **distinct completed orders** containing a product, not
+units sold, and cover only products that are on sale. See
+[admin-guide.md](admin-guide.md#statistics).
+
+## Reviews group
+
+Customers reach the private reviews group through an invite link the bot resolves
+on demand (or `REVIEW_INVITE_LINK` verbatim). The group's chat ID never appears
+in anything sent to a user. Links are cached in-process for an hour.
 
 ## Routing
 

@@ -66,8 +66,7 @@ def test_all_catalogs_carry_the_same_keys() -> None:
     for code in SUPPORTED_LANGUAGES:
         keys = locale_keys(code)
         assert keys == base, (
-            f"{code} out of sync: missing={sorted(base - keys)} "
-            f"extra={sorted(keys - base)}"
+            f"{code} out of sync: missing={sorted(base - keys)} extra={sorted(keys - base)}"
         )
 
 
@@ -82,9 +81,7 @@ def test_handlers_and_keyboards_send_no_literal_text() -> None:
             if getattr(node.func, "attr", None) not in DELIVERY_CALLS:
                 continue
             candidates = list(node.args[:1])
-            candidates += [
-                kw.value for kw in node.keywords if kw.arg in TEXT_KWARGS
-            ]
+            candidates += [kw.value for kw in node.keywords if kw.arg in TEXT_KWARGS]
             for value in candidates:
                 if isinstance(value, ast.Constant) and isinstance(value.value, str):
                     rel = path.relative_to(APP.parent)
@@ -123,8 +120,7 @@ def test_documented_exceptions_are_actually_marked() -> None:
         assert path.exists(), f"{rel} listed as an exception but does not exist"
         source = path.read_text(encoding="utf-8")
         assert "INTENTIONALLY NOT LOCALIZED" in source, (
-            f"{rel} is exempted ({reason}) but carries no "
-            "'INTENTIONALLY NOT LOCALIZED' marker"
+            f"{rel} is exempted ({reason}) but carries no 'INTENTIONALLY NOT LOCALIZED' marker"
         )
 
 
@@ -136,15 +132,12 @@ def test_no_undocumented_module_builds_user_prose() -> None:
         rel = path.relative_to(APP).as_posix()
         if rel in DOCUMENTED_EXCEPTIONS:
             continue
-        for lineno, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
-        ):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             stripped = line.strip()
             if stripped.startswith(("#", "*")) or ".t(" in line:
                 continue
             if label.search(line):
                 offenders.append(f"{rel}:{lineno}")
-    assert not offenders, (
-        "HTML-formatted prose built outside the locale system: "
-        + ", ".join(offenders)
+    assert not offenders, "HTML-formatted prose built outside the locale system: " + ", ".join(
+        offenders
     )

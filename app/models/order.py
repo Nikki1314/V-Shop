@@ -35,7 +35,6 @@ class Order(Base, TimestampMixin):
         Index("ix_orders_status_created_at", "status", "created_at"),
     )
 
-
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"),
@@ -70,7 +69,8 @@ class Order(Base, TimestampMixin):
         nullable=False,
         default=OrderStatus.NEW,
         server_default=OrderStatus.NEW.value,
-        index=True,
+        # No single-column index: ix_orders_status_created_at leads with status
+        # and serves every lookup on it, including count(*) as an index-only scan.
     )
 
     user: Mapped[User] = relationship(back_populates="orders")

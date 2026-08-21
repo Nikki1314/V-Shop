@@ -122,8 +122,12 @@ class OrderRepository(BaseRepository[Order]):
         if cleaned.isdigit():
             order = await self.get_with_items(int(cleaned))
             if order is not None:
-                results.append(order)
-                seen.add(order.id)
+                # An exact order number is the search an admin runs most, and it
+                # can only ever match one row. Falling through would add a
+                # leading-wildcard ILIKE — a sequential scan of every order —
+                # for nothing. A numeric query that matches no id still falls
+                # through, because phone numbers are digits too.
+                return [order]
 
         pattern = f"%{cleaned}%"
         stmt = (

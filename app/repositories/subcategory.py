@@ -72,9 +72,7 @@ class SubcategoryRepository(BaseRepository[Subcategory]):
             .correlate(Subcategory)
             .scalar_subquery()
         )
-        stmt = select(Subcategory, product_count).where(
-            Subcategory.category_id == category_id
-        )
+        stmt = select(Subcategory, product_count).where(Subcategory.category_id == category_id)
         if active_only:
             stmt = stmt.where(Subcategory.is_active.is_(True))
         rows = await self.session.execute(self._ordered(stmt))
@@ -127,9 +125,7 @@ class SubcategoryRepository(BaseRepository[Subcategory]):
 
     async def next_sort_order(self, category_id: int) -> int:
         result = await self.session.scalar(
-            select(func.max(Subcategory.sort_order)).where(
-                Subcategory.category_id == category_id
-            )
+            select(func.max(Subcategory.sort_order)).where(Subcategory.category_id == category_id)
         )
         return int(result or 0) + 1
 
@@ -190,9 +186,7 @@ class SubcategoryRepository(BaseRepository[Subcategory]):
     ) -> Subcategory:
         """Reassign a brand to another category, appending it to that order."""
         sort_order = await self.next_sort_order(category_id)
-        return await self.update(
-            subcategory, category_id=category_id, sort_order=sort_order
-        )
+        return await self.update(subcategory, category_id=category_id, sort_order=sort_order)
 
     async def reorder(self, category_id: int, ordered_ids: list[int]) -> list[Subcategory]:
         """Assign sort_order by position within one category — one SELECT."""

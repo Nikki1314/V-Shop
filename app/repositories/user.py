@@ -21,16 +21,12 @@ class UserRepository(BaseRepository[User]):
         super().__init__(session)
 
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
-        result = await self.session.scalars(
-            select(User).where(User.telegram_id == telegram_id)
-        )
+        result = await self.session.scalars(select(User).where(User.telegram_id == telegram_id))
         return result.first()
 
     async def get_by_telegram_id_with_cart(self, telegram_id: int) -> User | None:
         result = await self.session.scalars(
-            select(User)
-            .where(User.telegram_id == telegram_id)
-            .options(selectinload(User.cart))
+            select(User).where(User.telegram_id == telegram_id).options(selectinload(User.cart))
         )
         return result.first()
 
@@ -92,9 +88,7 @@ class UserRepository(BaseRepository[User]):
         ever reach individuals — even if a group ID had somehow been recorded
         as a user by an older build or a manual edit.
         """
-        result = await self.session.scalars(
-            select(User.telegram_id).where(User.telegram_id > 0)
-        )
+        result = await self.session.scalars(select(User.telegram_id).where(User.telegram_id > 0))
         return list(result.all())
 
     async def list_all_users(self, *, offset: int = 0, limit: int | None = None) -> list[User]:

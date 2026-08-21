@@ -40,9 +40,7 @@ async def _render(
     return format_statistics(stats, i18n, settings.currency_symbol)
 
 
-@router.message(
-    LocalizedText("admin.menu_statistics"), ~StateFilter(*ADMIN_WIZARD_STATES)
-)
+@router.message(LocalizedText("admin.menu_statistics"), ~StateFilter(*ADMIN_WIZARD_STATES))
 async def open_statistics(
     message: Message,
     session: AsyncSession,

@@ -86,9 +86,7 @@ class ProductRepository(BaseRepository[Product]):
         from app.models.order import OrderItem
 
         result = await self.session.scalar(
-            select(func.count())
-            .select_from(OrderItem)
-            .where(OrderItem.product_id == product_id)
+            select(func.count()).select_from(OrderItem).where(OrderItem.product_id == product_id)
         )
         return int(result or 0)
 
@@ -154,9 +152,7 @@ class ProductRepository(BaseRepository[Product]):
         if not product_ids:
             return set()
         rows = await self.session.scalars(
-            only_sellable_products(select(Product.id)).where(
-                Product.id.in_(product_ids)
-            )
+            only_sellable_products(select(Product.id)).where(Product.id.in_(product_ids))
         )
         # An id that matches no row at all — a product deleted between adding it
         # to the cart and checking out — is absent from `sellable` and therefore

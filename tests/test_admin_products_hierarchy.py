@@ -24,9 +24,7 @@ from app.utils.cache import invalidate_categories_cache
 from app.utils.product_display import format_admin_product_card
 
 LANGS = ("ru", "en", "de", "uk")
-BASE = dict(
-    flavor="Mango", volume="30ml", nicotine_strength="3mg", price=Decimal("12.50")
-)
+BASE = dict(flavor="Mango", volume="30ml", nicotine_strength="3mg", price=Decimal("12.50"))
 
 
 @pytest.fixture(autouse=True)
@@ -58,10 +56,7 @@ def test_add_wizard_reaches_brand_then_price() -> None:
     """photo -> names -> descriptions -> category -> brand -> ... -> price."""
     assert _TEXT_STEPS[AddProductStates.name_de][1] is AddProductStates.name_uk
     assert _TEXT_STEPS[AddProductStates.name_uk][1] is AddProductStates.description_ru
-    assert (
-        _TEXT_STEPS[AddProductStates.description_de][1]
-        is AddProductStates.description_uk
-    )
+    assert _TEXT_STEPS[AddProductStates.description_de][1] is AddProductStates.description_uk
     assert _TEXT_STEPS[AddProductStates.description_uk][1] is AddProductStates.category
     assert hasattr(AddProductStates, "subcategory")
 
@@ -72,10 +67,7 @@ def test_edit_wizard_collects_all_four_languages() -> None:
         assert f"name_{code}" in fields
         assert f"description_{code}" in fields
     assert EDIT_TEXT_STEPS[EditProductStates.name_de][1] is EditProductStates.name_uk
-    assert (
-        EDIT_TEXT_STEPS[EditProductStates.description_de][1]
-        is EditProductStates.description_uk
-    )
+    assert EDIT_TEXT_STEPS[EditProductStates.description_de][1] is EditProductStates.description_uk
 
 
 def test_previews_render_every_field() -> None:
@@ -140,9 +132,16 @@ async def test_moving_a_product_keeps_category_consistent(
 ) -> None:
     admin, category, other, brand, foreign = await _tree(session)
     product = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="о", description_en="d", description_de="b", description_uk="о",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
+        description_uk="о",
         **BASE,
     )
     await session.flush()
@@ -165,9 +164,14 @@ async def test_create_persists_every_field(session: AsyncSession) -> None:
     product = await admin.create_product(
         category_id=category.id,
         subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="опис RU", description_en="desc EN",
-        description_de="besch DE", description_uk="опис UA",
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="опис RU",
+        description_en="desc EN",
+        description_de="besch DE",
+        description_uk="опис UA",
         image_file_id="AgACPHOTO",
         **BASE,
     )
@@ -176,7 +180,10 @@ async def test_create_persists_every_field(session: AsyncSession) -> None:
     assert product.subcategory_id == brand.id
     assert product.category_id == category.id
     assert (product.name_ru, product.name_en, product.name_de, product.name_uk) == (
-        "Манго", "Mango", "Mango DE", "Манго UA",
+        "Манго",
+        "Mango",
+        "Mango DE",
+        "Манго UA",
     )
     assert product.description_uk == "опис UA"
     assert product.image_file_id == "AgACPHOTO"
@@ -191,9 +198,16 @@ async def test_create_persists_every_field(session: AsyncSession) -> None:
 async def test_active_state_toggles(session: AsyncSession) -> None:
     admin, category, _o, brand, _f = await _tree(session)
     product = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="M", name_en="M", name_de="M", name_uk="M",
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="M",
+        name_en="M",
+        name_de="M",
+        name_uk="M",
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
         **BASE,
     )
     await session.flush()
@@ -208,9 +222,16 @@ async def test_active_state_toggles(session: AsyncSession) -> None:
 async def test_snapshot_and_card_carry_the_new_fields(session: AsyncSession) -> None:
     admin, category, _o, brand, _f = await _tree(session)
     created = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="о", description_en="d", description_de="b", description_uk="о UA",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
+        description_uk="о UA",
         **BASE,
     )
     await session.flush()
@@ -242,8 +263,12 @@ async def test_legacy_products_without_a_brand_still_work(
     admin, category, _o, _b, _f = await _tree(session)
     legacy = await admin.create_product(
         category_id=category.id,
-        name_ru="Старый", name_en="Legacy", name_de="Legacy DE",
-        description_ru="о", description_en="d", description_de="b",
+        name_ru="Старый",
+        name_en="Legacy",
+        name_de="Legacy DE",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
         **BASE,
     )
     await session.flush()

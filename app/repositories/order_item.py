@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -24,11 +25,7 @@ class OrderItemRepository(BaseRepository[OrderItem]):
         *,
         with_product: bool = True,
     ) -> list[OrderItem]:
-        stmt = (
-            select(OrderItem)
-            .where(OrderItem.order_id == order_id)
-            .order_by(OrderItem.id.asc())
-        )
+        stmt = select(OrderItem).where(OrderItem.order_id == order_id).order_by(OrderItem.id.asc())
         if with_product:
             stmt = stmt.options(selectinload(OrderItem.product))
         result = await self.session.scalars(stmt)
@@ -54,7 +51,7 @@ class OrderItemRepository(BaseRepository[OrderItem]):
     async def add_items(
         self,
         order_id: int,
-        items: list[tuple[int, int, Decimal | str | float]],
+        items: Sequence[tuple[int, int, Decimal | str | float]],
     ) -> list[OrderItem]:
         """
         Bulk-add line items.

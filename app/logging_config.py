@@ -10,9 +10,7 @@ if TYPE_CHECKING:
     from app.config import Settings
 
 
-LOG_FORMAT = (
-    "%(asctime)s | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
-)
+LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 

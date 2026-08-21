@@ -60,9 +60,14 @@ def format_admin_product_card(product: Product, i18n: LocalizationService) -> st
         if product.is_active
         else i18n.t("admin.product_status_inactive")
     )
-    category_name = product.category.name_ru if product.category is not None else "—"
+    language = i18n.language
+    category_name = (
+        localized_category_name(product.category, language) if product.category is not None else "—"
+    )
     subcategory_name = (
-        product.subcategory.name_ru if product.subcategory is not None else "—"
+        localized_category_name(product.subcategory, language)
+        if product.subcategory is not None
+        else "—"
     )
     return i18n.t(
         "admin.product_card",

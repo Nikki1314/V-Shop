@@ -47,16 +47,11 @@ class Settings(BaseSettings):
     )
     admin_ids: Annotated[list[int], NoDecode] = Field(
         default_factory=list,
-        description=(
-            "Telegram user IDs with admin access; "
-            "also receive new-order notifications"
-        ),
+        description=("Telegram user IDs with admin access; also receive new-order notifications"),
     )
     manager_chat_id: int = Field(
         ...,
-        description=(
-            "Manager group or private admin chat ID for new order notifications"
-        ),
+        description=("Manager group or private admin chat ID for new order notifications"),
     )
     review_group_chat_id: int | None = Field(
         default=None,

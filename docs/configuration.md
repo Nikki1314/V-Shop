@@ -30,6 +30,19 @@ Empty `ADMIN_IDS` fail-closes: nobody gets the admin panel.
 
 Admin IDs also receive new-order notifications in private chat (deduplicated with `MANAGER_CHAT_ID`).
 
+## Reviews group
+
+Both optional. With neither set, the Reviews button reports that reviews are
+unavailable rather than failing.
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `REVIEW_GROUP_CHAT_ID` | int | unset | Private reviews group. The bot creates an invite link for it on demand. |
+| `REVIEW_INVITE_LINK` | string | unset | A pre-made invite link, used verbatim. Set this when the bot can invite members but cannot manage links. |
+
+The group's chat ID is **never** sent to a customer — only the invite link, and
+only inside a URL button. Links are cached in-process for an hour.
+
 ## Application
 
 | Variable | Type | Default | Description |

@@ -18,12 +18,8 @@ from app.repositories.product import ProductRepository
 
 logger = logging.getLogger(__name__)
 
-_BERLIN_DELIVERY = frozenset(
-    {DeliveryType.PICKUP.value, DeliveryType.COURIER.value}
-)
-_OTHER_DELIVERY = frozenset(
-    {DeliveryType.POSTAL.value, DeliveryType.SERVICE.value}
-)
+_BERLIN_DELIVERY = frozenset({DeliveryType.PICKUP.value, DeliveryType.COURIER.value})
+_OTHER_DELIVERY = frozenset({DeliveryType.POSTAL.value, DeliveryType.SERVICE.value})
 
 
 class EmptyCartError(ValueError):

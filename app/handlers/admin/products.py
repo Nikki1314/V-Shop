@@ -30,7 +30,8 @@ from app.services.localization import LocalizationService
 from app.states.admin import ADMIN_WIZARD_STATES, AddProductStates
 from app.utils.confirm import confirm_once
 from app.utils.html import e
-from app.utils.telegram_ui import clear_inline_markup
+from app.utils.product_display import localized_category_name
+from app.utils.telegram_ui import as_message, clear_inline_markup
 from app.utils.validators import nonempty, parse_positive_int, parse_price
 
 logger = logging.getLogger(__name__)
@@ -101,12 +102,6 @@ def _build_preview(i18n: LocalizationService, data: dict[str, Any]) -> str:
     )
 
 
-def _chat_message(callback: CallbackQuery) -> Message | None:
-    """Narrow ``callback.message`` to a usable ``Message`` (never Inaccessible)."""
-    message = callback.message
-    return message if isinstance(message, Message) else None
-
-
 async def _cancel_wizard(
     message: Message,
     i18n: LocalizationService,
@@ -139,7 +134,10 @@ async def _ask_subcategory(
     if not subcategories:
         await state.clear()
         await message.answer(
-            i18n.t("admin.product_no_subcategories", category=e(category.name_ru)),
+            i18n.t(
+                "admin.product_no_subcategories",
+                category=e(localized_category_name(category, i18n.language)),
+            ),
             reply_markup=admin_menu_keyboard(i18n),
         )
         return
@@ -150,7 +148,10 @@ async def _ask_subcategory(
         reply_markup=admin_cancel_keyboard(i18n),
     )
     await message.answer(
-        i18n.t("admin.product_pick_subcategory", category=e(category.name_ru)),
+        i18n.t(
+            "admin.product_pick_subcategory",
+            category=e(localized_category_name(category, i18n.language)),
+        ),
         reply_markup=admin_subcategory_pick_keyboard(subcategories),
     )
 
@@ -230,10 +231,11 @@ async def start_add_product(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     await state.clear()
-    await _ask_photo(callback.message, i18n, state)
+    await _ask_photo(message, i18n, state)
 
 
 # ---------------------------------------------------------------------------
@@ -257,9 +259,10 @@ async def cancel_add_product_callback(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
-    await _cancel_wizard(callback.message, i18n, state)
+    await _cancel_wizard(message, i18n, state)
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +272,8 @@ async def cancel_add_product_callback(
 
 @router.message(StateFilter(AddProductStates.photo), F.photo)
 async def process_photo(message: Message, i18n: LocalizationService, state: FSMContext) -> None:
+    if not message.photo:
+        return
     photo = message.photo[-1]
     await state.update_data(image_file_id=photo.file_id)
     await state.set_state(AddProductStates.name_ru)
@@ -314,7 +319,8 @@ async def process_text_step(
         )
         return
 
-    await state.update_data(**{data_key: value})
+    update: dict[str, Any] = {data_key: value}
+    await state.update_data(**update)
     await state.set_state(next_state)
 
     if next_state == AddProductStates.category:
@@ -350,7 +356,7 @@ async def process_category(
     session: AsyncSession,
 ) -> None:
     await callback.answer()
-    message = _chat_message(callback)
+    message = as_message(callback)
     if message is None or callback.data is None:
         return
 
@@ -365,7 +371,10 @@ async def process_category(
         await message.answer(i18n.t("admin.product_category_invalid"))
         return
 
-    await state.update_data(category_id=category.id, category_name=category.name_ru)
+    await state.update_data(
+        category_id=category.id,
+        category_name=localized_category_name(category, i18n.language),
+    )
     try:
         await message.edit_reply_markup(reply_markup=None)
     except Exception:
@@ -395,13 +404,11 @@ async def process_subcategory(
     session: AsyncSession,
 ) -> None:
     await callback.answer()
-    message = _chat_message(callback)
+    message = as_message(callback)
     if message is None or callback.data is None:
         return
 
-    subcategory_id = parse_positive_int(
-        callback.data.removeprefix(CALLBACK_PRODUCT_SUB_PREFIX)
-    )
+    subcategory_id = parse_positive_int(callback.data.removeprefix(CALLBACK_PRODUCT_SUB_PREFIX))
     if subcategory_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
         return
@@ -420,7 +427,8 @@ async def process_subcategory(
         return
 
     await state.update_data(
-        subcategory_id=subcategory.id, subcategory_name=subcategory.name_ru
+        subcategory_id=subcategory.id,
+        subcategory_name=localized_category_name(subcategory, i18n.language),
     )
     await state.set_state(AddProductStates.flavor)
     try:
@@ -485,7 +493,8 @@ async def confirm_add_product(
     session: AsyncSession,
 ) -> None:
     await callback.answer()
-    if callback.message is None or callback.from_user is None:
+    message = as_message(callback)
+    if message is None or callback.from_user is None:
         return
 
     async with confirm_once(state, lock_key=f"product_create:{callback.from_user.id}") as data:
@@ -509,7 +518,7 @@ async def confirm_add_product(
         )
         if any(key not in data for key in required):
             await state.clear()
-            await callback.message.answer(
+            await message.answer(
                 i18n.t("admin.product_incomplete"),
                 reply_markup=admin_menu_keyboard(i18n),
             )
@@ -535,8 +544,8 @@ async def confirm_add_product(
         )
         await state.clear()
 
-        await clear_inline_markup(callback.message)
-        await callback.message.answer(
+        await clear_inline_markup(message)
+        await message.answer(
             i18n.t("admin.product_created", product_id=product.id),
             reply_markup=admin_menu_keyboard(i18n),
         )

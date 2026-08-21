@@ -105,9 +105,7 @@ class AdminService:
     async def rename_subcategory(self, subcategory: Subcategory, name: str) -> Subcategory:
         return await self.catalog.rename_subcategory(subcategory, name)
 
-    async def set_subcategory_names(
-        self, subcategory: Subcategory, **names: str
-    ) -> Subcategory:
+    async def set_subcategory_names(self, subcategory: Subcategory, **names: str) -> Subcategory:
         return await self.catalog.set_subcategory_names(subcategory, **names)
 
     async def set_subcategory_active(
@@ -118,13 +116,9 @@ class AdminService:
     async def move_subcategory(
         self, category_id: int, subcategory_id: int, *, direction: int
     ) -> list[Subcategory]:
-        return await self.catalog.move_subcategory(
-            category_id, subcategory_id, direction=direction
-        )
+        return await self.catalog.move_subcategory(category_id, subcategory_id, direction=direction)
 
-    async def reassign_subcategory(
-        self, subcategory: Subcategory, category_id: int
-    ) -> Subcategory:
+    async def reassign_subcategory(self, subcategory: Subcategory, category_id: int) -> Subcategory:
         return await self.catalog.reassign_subcategory(subcategory, category_id)
 
     async def count_subcategory_products(self, subcategory_id: int) -> int:
@@ -133,9 +127,7 @@ class AdminService:
     async def delete_subcategory(self, subcategory: Subcategory) -> None:
         await self.catalog.delete_subcategory(subcategory)
 
-    async def move_product_to_subcategory(
-        self, product: Product, subcategory_id: int
-    ) -> Product:
+    async def move_product_to_subcategory(self, product: Product, subcategory_id: int) -> Product:
         return await self.catalog.move_product_to_subcategory(product, subcategory_id)
 
     async def get_category(self, category_id: int) -> Category | None:
@@ -236,9 +228,7 @@ class AdminService:
         offset: int = 0,
         limit: int | None = None,
     ) -> list[Order]:
-        return await self.order_admin.list_orders_by_status(
-            status, offset=offset, limit=limit
-        )
+        return await self.order_admin.list_orders_by_status(status, offset=offset, limit=limit)
 
     async def count_orders_by_status(self, status: OrderStatus) -> int:
         return await self.order_admin.count_orders_by_status(status)
@@ -250,9 +240,7 @@ class AdminService:
         offset: int = 0,
         limit: int,
     ) -> tuple[int, list[Order]]:
-        return await self.order_admin.page_orders_by_status(
-            status, offset=offset, limit=limit
-        )
+        return await self.order_admin.page_orders_by_status(status, offset=offset, limit=limit)
 
     async def get_order(self, order_id: int) -> Order | None:
         return await self.order_admin.get_order(order_id)

@@ -33,15 +33,11 @@ class UserService:
             await self.carts.get_or_create_for_user(user.id)
             return user
 
-        profile_changed = (
-            user.username != tg_user.username or user.first_name != tg_user.first_name
-        )
+        profile_changed = user.username != tg_user.username or user.first_name != tg_user.first_name
         last_seen = user.last_seen
         if last_seen is not None and last_seen.tzinfo is None:
             last_seen = last_seen.replace(tzinfo=UTC)
-        stale = last_seen is None or (
-            datetime.now(UTC) - last_seen >= _LAST_SEEN_TOUCH_INTERVAL
-        )
+        stale = last_seen is None or (datetime.now(UTC) - last_seen >= _LAST_SEEN_TOUCH_INTERVAL)
         if profile_changed or stale:
             await self.users.update_profile(
                 user,

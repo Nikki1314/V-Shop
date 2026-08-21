@@ -175,9 +175,7 @@ async def test_unrelated_group_is_equally_ignored() -> None:
 async def test_admin_privileges_do_not_bypass_the_gate() -> None:
     """Authorization is per-user; the chat rule is checked regardless."""
     for kind, chat_id in GROUPY:
-        result, spy = await _run(
-            _update_message(_chat(kind, chat_id), _user(ADMIN_ID), "/admin")
-        )
+        result, spy = await _run(_update_message(_chat(kind, chat_id), _user(ADMIN_ID), "/admin"))
         assert not spy.called, f"admin bypassed isolation in a {kind}"
         assert result is None
 

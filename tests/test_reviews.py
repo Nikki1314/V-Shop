@@ -183,9 +183,7 @@ async def test_unexpected_error_is_swallowed() -> None:
 @pytest.mark.asyncio
 async def test_failure_is_not_cached() -> None:
     """A transient outage must not disable the button for an hour."""
-    bot = FakeBot(
-        create=_bad_request("temporary"), export=_bad_request("temporary")
-    )
+    bot = FakeBot(create=_bad_request("temporary"), export=_bad_request("temporary"))
     service = ReviewService(bot, _settings(review_group_chat_id=GROUP_ID))  # type: ignore[arg-type]
     assert await service.get_invite_link() is None
 
@@ -230,9 +228,7 @@ def test_link_is_delivered_as_a_url_button() -> None:
 def test_reviews_button_present_in_information_menu(language: str) -> None:
     i18n = LocalizationService.from_code(language)
     entries = [
-        (b.text, b.callback_data)
-        for row in info_menu_keyboard(i18n).inline_keyboard
-        for b in row
+        (b.text, b.callback_data) for row in info_menu_keyboard(i18n).inline_keyboard for b in row
     ]
     payloads = [data for _, data in entries]
     labels = [text for text, _ in entries]
@@ -245,12 +241,14 @@ def test_reviews_button_present_in_information_menu(language: str) -> None:
 
 
 def test_review_strings_are_translated_not_copied() -> None:
-    keys = ("info.btn_reviews", "info.reviews_text", "info.reviews_open",
-            "info.reviews_unavailable")
+    keys = (
+        "info.btn_reviews",
+        "info.reviews_text",
+        "info.reviews_open",
+        "info.reviews_unavailable",
+    )
     for key in keys:
-        rendered = {
-            LocalizationService.from_code(code).t(key) for code in LANGS
-        }
+        rendered = {LocalizationService.from_code(code).t(key) for code in LANGS}
         assert len(rendered) == len(LANGS), f"{key} is not translated per language"
         for value in rendered:
             assert value and not value.startswith("info."), key

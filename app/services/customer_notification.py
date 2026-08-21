@@ -89,8 +89,7 @@ class CustomerOrderNotificationService:
             return False
         except TelegramRetryAfter as exc:
             logger.warning(
-                "Customer notification rate-limited order_id=%s telegram_id=%s "
-                "retry_after=%s",
+                "Customer notification rate-limited order_id=%s telegram_id=%s retry_after=%s",
                 order.id,
                 user.telegram_id,
                 exc.retry_after,

@@ -41,7 +41,8 @@ from app.states.admin import (
     RenameCategoryStates,
 )
 from app.utils.html import e
-from app.utils.telegram_ui import edit_or_answer
+from app.utils.product_display import localized_category_name
+from app.utils.telegram_ui import as_message, edit_or_answer
 from app.utils.validators import nonempty, parse_callback_id
 
 logger = logging.getLogger(__name__)
@@ -56,12 +57,6 @@ CREATE_STEPS: tuple[tuple[State, str, str], ...] = (
 )
 
 LANGUAGE_FIELDS = {"ru": "name_ru", "en": "name_en", "de": "name_de", "uk": "name_uk"}
-
-
-def _chat_message(callback: CallbackQuery) -> Message | None:
-    """Narrow ``callback.message`` to a usable ``Message`` (never Inaccessible)."""
-    message = callback.message
-    return message if isinstance(message, Message) else None
 
 
 async def _cancel_category_wizard(
@@ -119,9 +114,7 @@ async def _send_category_view(
     product_count = await admin.count_category_products(category.id)
     subcategory_count = len(await admin.list_subcategories(category.id))
     status = i18n.t(
-        "admin.category_status_active"
-        if category.is_active
-        else "admin.category_status_inactive"
+        "admin.category_status_active" if category.is_active else "admin.category_status_inactive"
     )
     text = i18n.t(
         "admin.category_card",
@@ -178,9 +171,10 @@ async def show_categories_list(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
-    await _show_categories_list(callback.message, i18n, session, edit=True)
+    await _show_categories_list(message, i18n, session, edit=True)
 
 
 @router.callback_query(F.data.startswith(CALLBACK_CATEGORY_VIEW_PREFIX))
@@ -190,7 +184,8 @@ async def view_category(
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -204,10 +199,10 @@ async def view_category(
 
     category = await AdminService(session).get_category(category_id)
     if category is None:
-        await callback.message.answer(i18n.t("admin.category_not_found"))
+        await message.answer(i18n.t("admin.category_not_found"))
         return
 
-    await _send_category_view(callback.message, i18n, session, category, edit=True)
+    await _send_category_view(message, i18n, session, category, edit=True)
 
 
 # ---------------------------------------------------------------------------
@@ -222,11 +217,12 @@ async def start_create_category(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     await state.clear()
     await state.set_state(CreateCategoryStates.name_ru)
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.category_ask_name_ru"),
         reply_markup=admin_cancel_keyboard(i18n),
     )
@@ -252,9 +248,10 @@ async def cancel_category_wizard_callback(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
-    await _cancel_category_wizard(callback.message, i18n, state)
+    await _cancel_category_wizard(message, i18n, state)
 
 
 @router.message(StateFilter(CreateCategoryStates), F.text)
@@ -293,9 +290,7 @@ async def process_create_category(
     if position + 1 < len(CREATE_STEPS):
         next_state, _, prompt_key = CREATE_STEPS[position + 1]
         await state.set_state(next_state)
-        await message.answer(
-            i18n.t(prompt_key), reply_markup=admin_cancel_keyboard(i18n)
-        )
+        await message.answer(i18n.t(prompt_key), reply_markup=admin_cancel_keyboard(i18n))
         return
 
     data = await state.get_data()
@@ -312,7 +307,7 @@ async def process_create_category(
     await message.answer(
         i18n.t(
             "admin.category_created",
-            name=e(category.name_ru),
+            name=e(localized_category_name(category, i18n.language)),
             category_id=category.id,
         ),
         reply_markup=admin_menu_keyboard(i18n),
@@ -331,7 +326,7 @@ async def toggle_category_active(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     category_id = parse_callback_id(callback.data, CALLBACK_CATEGORY_TOGGLE_PREFIX)
     if message is None or category_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -350,7 +345,7 @@ async def toggle_category_active(
 
     key = "admin.category_activated" if new_state else "admin.category_deactivated"
     await callback.answer()
-    await message.answer(i18n.t(key, name=e(category.name_ru)))
+    await message.answer(i18n.t(key, name=e(localized_category_name(category, i18n.language))))
     await _send_category_view(message, i18n, session, category, edit=True)
 
 
@@ -365,7 +360,7 @@ async def pick_category_language(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     category_id = parse_callback_id(callback.data, CALLBACK_CATEGORY_EDIT_PREFIX)
     if message is None or category_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -387,7 +382,7 @@ async def start_edit_category_name(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     if callback.data is None or message is None:
         await callback.answer()
         return
@@ -428,7 +423,8 @@ async def start_rename_category(
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -440,12 +436,12 @@ async def start_rename_category(
     await callback.answer()
     category = await AdminService(session).get_category(category_id)
     if category is None:
-        await callback.message.answer(i18n.t("admin.category_not_found"))
+        await message.answer(i18n.t("admin.category_not_found"))
         return
 
     await state.set_state(RenameCategoryStates.name)
     await state.update_data(category_id=category.id, current_name=category.name)
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.category_ask_rename", current=category.name),
         reply_markup=admin_cancel_keyboard(i18n),
     )
@@ -509,7 +505,8 @@ async def ask_delete_category(
     callback: CallbackQuery,
     i18n: LocalizationService,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -519,7 +516,7 @@ async def ask_delete_category(
         return
 
     await callback.answer()
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.category_delete_ask", category_id=category_id),
         reply_markup=category_delete_confirm_keyboard(i18n, category_id),
     )
@@ -532,7 +529,8 @@ async def confirm_delete_category(
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -545,7 +543,7 @@ async def confirm_delete_category(
     admin = AdminService(session)
     category = await admin.get_category(category_id)
     if category is None:
-        await callback.message.answer(i18n.t("admin.category_not_found"))
+        await message.answer(i18n.t("admin.category_not_found"))
         return
 
     name = category.name
@@ -561,18 +559,18 @@ async def confirm_delete_category(
                 show_alert=True,
             )
             return
-        await callback.message.answer(i18n.t("admin.category_delete_in_use"))
+        await message.answer(i18n.t("admin.category_delete_in_use"))
         category = await admin.get_category(category_id)
         if category is not None:
-            await _send_category_view(callback.message, i18n, session, category)
+            await _send_category_view(message, i18n, session, category)
         return
 
     await state.clear()
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.category_deleted", name=name, category_id=category_id),
         reply_markup=admin_menu_keyboard(i18n),
     )
-    await _show_categories_list(callback.message, i18n, session)
+    await _show_categories_list(message, i18n, session)
 
 
 # ---------------------------------------------------------------------------
@@ -586,7 +584,8 @@ async def move_category_up(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -600,7 +599,7 @@ async def move_category_up(
         await callback.answer(i18n.t("admin.category_not_found"), show_alert=True)
         return
     await callback.answer(i18n.t("admin.category_order_updated"))
-    await _send_category_view(callback.message, i18n, session, category, edit=True)
+    await _send_category_view(message, i18n, session, category, edit=True)
 
 
 @router.callback_query(F.data.startswith(CALLBACK_CATEGORY_DOWN_PREFIX))
@@ -609,7 +608,8 @@ async def move_category_down(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         await callback.answer()
         return
 
@@ -623,7 +623,7 @@ async def move_category_down(
         await callback.answer(i18n.t("admin.category_not_found"), show_alert=True)
         return
     await callback.answer(i18n.t("admin.category_order_updated"))
-    await _send_category_view(callback.message, i18n, session, category, edit=True)
+    await _send_category_view(message, i18n, session, category, edit=True)
 
 
 @router.message(StateFilter(CreateCategoryStates))

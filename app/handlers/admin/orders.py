@@ -37,7 +37,7 @@ from app.services.customer_notification import CustomerOrderNotificationService
 from app.services.localization import LocalizationService
 from app.states.admin import ADMIN_WIZARD_STATES, SearchOrderStates
 from app.utils.admin_order import format_admin_order_card
-from app.utils.telegram_ui import clamp_page, edit_or_answer, page_count
+from app.utils.telegram_ui import as_message, clamp_page, edit_or_answer, page_count
 from app.utils.validators import allowlist, nonempty, parse_nonnegative_int, parse_positive_int
 
 logger = logging.getLogger(__name__)
@@ -64,15 +64,11 @@ async def _show_order_list(
         offset=requested_page * ORDERS_PAGE_SIZE,
         limit=ORDERS_PAGE_SIZE,
     )
-    title_key = (
-        "admin.orders_new_title" if list_kind == "new" else "admin.orders_completed_title"
-    )
+    title_key = "admin.orders_new_title" if list_kind == "new" else "admin.orders_completed_title"
 
     if total == 0:
         text = i18n.t(
-            "admin.orders_empty_new"
-            if list_kind == "new"
-            else "admin.orders_empty_completed"
+            "admin.orders_empty_new" if list_kind == "new" else "admin.orders_empty_completed"
         )
         await edit_or_answer(
             message,
@@ -193,15 +189,16 @@ async def show_order_actions(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     try:
-        await callback.message.edit_text(
+        await message.edit_text(
             i18n.t("admin.orders_actions"),
             reply_markup=orders_actions_keyboard(i18n),
         )
     except Exception:
-        await callback.message.answer(
+        await message.answer(
             i18n.t("admin.orders_actions"),
             reply_markup=orders_actions_keyboard(i18n),
         )
@@ -222,7 +219,8 @@ async def view_new_orders(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         return
 
     page = 0
@@ -234,7 +232,7 @@ async def view_new_orders(
         page = parsed
 
     await _show_order_list(
-        callback.message,
+        message,
         i18n,
         session,
         status=OrderStatus.NEW,
@@ -254,7 +252,8 @@ async def view_completed_orders(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         return
 
     page = 0
@@ -266,7 +265,7 @@ async def view_completed_orders(
         page = parsed
 
     await _show_order_list(
-        callback.message,
+        message,
         i18n,
         session,
         status=OrderStatus.COMPLETED,
@@ -285,22 +284,23 @@ async def view_order(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None or callback.data is None:
+    message = as_message(callback)
+    if message is None or callback.data is None:
         return
 
     parsed = _parse_view_callback(callback.data)
     if parsed is None:
-        await callback.message.answer(i18n.t("error.invalid_callback"))
+        await message.answer(i18n.t("error.invalid_callback"))
         return
 
     order_id, list_kind, page = parsed
     order = await AdminService(session).get_order(order_id)
     if order is None:
-        await callback.message.answer(i18n.t("admin.order_not_found"))
+        await message.answer(i18n.t("admin.order_not_found"))
         return
 
     await _send_order_view(
-        callback.message,
+        message,
         i18n,
         order,
         list_kind=list_kind,
@@ -321,10 +321,11 @@ async def start_search_orders(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     await state.set_state(SearchOrderStates.query)
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.orders_ask_search"),
         reply_markup=admin_cancel_keyboard(i18n),
     )
@@ -355,9 +356,10 @@ async def cancel_search_callback(
 ) -> None:
     await callback.answer()
     await state.clear()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.orders_search_cancelled"),
         reply_markup=admin_menu_keyboard(i18n),
     )
@@ -466,9 +468,7 @@ async def change_order_status(
             ),
             show_alert=True,
         )
-        await _send_order_view(
-            message, i18n, order, list_kind=list_kind, page=page, edit=True
-        )
+        await _send_order_view(message, i18n, order, list_kind=list_kind, page=page, edit=True)
         return
     # Commit before telling the customer: they must never hear about a change
     # that is not durable, and a Telegram failure must not undo it.
@@ -476,9 +476,7 @@ async def change_order_status(
 
     order = await admin.get_order(order.id) or order
     if order.user is not None:
-        await CustomerOrderNotificationService(bot).notify_status_change(
-            order, order.user
-        )
+        await CustomerOrderNotificationService(bot).notify_status_change(order, order.user)
 
     await callback.answer(
         i18n.t(
@@ -487,8 +485,11 @@ async def change_order_status(
             status=status_label(i18n, order.status),
         )
     )
+    view_target = as_message(callback)
+    if view_target is None:
+        return
     await _send_order_view(
-        callback.message,
+        view_target,
         i18n,
         order,
         list_kind=list_kind,

@@ -38,6 +38,7 @@ from app.services.localization import LocalizationService
 from app.states.admin import CreateSubcategoryStates, RenameSubcategoryStates
 from app.utils.confirm import confirm_once
 from app.utils.html import e
+from app.utils.telegram_ui import as_message
 from app.utils.validators import nonempty, parse_callback_id
 
 logger = logging.getLogger(__name__)
@@ -52,12 +53,6 @@ _CREATE_STEPS: tuple[tuple[State, str, str], ...] = (
 )
 
 _LANGUAGE_FIELDS = {"ru": "name_ru", "en": "name_en", "de": "name_de", "uk": "name_uk"}
-
-
-def _chat_message(callback: CallbackQuery) -> Message | None:
-    """Narrow ``callback.message`` to a usable ``Message`` (never Inaccessible)."""
-    message = callback.message
-    return message if isinstance(message, Message) else None
 
 
 def _status(i18n: LocalizationService, subcategory: Subcategory) -> str:
@@ -95,9 +90,7 @@ async def _render_list(
     subcategories = await admin.list_subcategories(category_id)
     name = e(category.name_ru)
     if subcategories:
-        text = i18n.t(
-            "admin.subcategory_list_title", category=name, total=len(subcategories)
-        )
+        text = i18n.t("admin.subcategory_list_title", category=name, total=len(subcategories))
     else:
         text = i18n.t("admin.subcategory_list_empty", category=name)
     markup = subcategories_list_keyboard(i18n, category_id, subcategories)
@@ -121,9 +114,7 @@ async def _render_card(
 ) -> None:
     admin = AdminService(session)
     siblings = await admin.list_subcategories(subcategory.category_id)
-    index = next(
-        (i for i, s in enumerate(siblings) if s.id == subcategory.id), None
-    )
+    index = next((i for i, s in enumerate(siblings) if s.id == subcategory.id), None)
     if index is None:
         await message.answer(i18n.t("admin.subcategory_not_found"))
         return
@@ -143,9 +134,7 @@ async def _render_card(
         total=len(siblings),
         products=products,
     )
-    markup = subcategory_manage_keyboard(
-        i18n, subcategory, index=index, total=len(siblings)
-    )
+    markup = subcategory_manage_keyboard(i18n, subcategory, index=index, total=len(siblings))
     if edit:
         try:
             await message.edit_text(text, reply_markup=markup)
@@ -166,7 +155,7 @@ async def show_subcategories(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     category_id = parse_callback_id(callback.data, CALLBACK_SUB_LIST_PREFIX)
     if message is None or category_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -181,7 +170,7 @@ async def view_subcategory(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_VIEW_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -206,7 +195,7 @@ async def start_create_subcategory(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     category_id = parse_callback_id(callback.data, CALLBACK_SUB_CREATE_PREFIX)
     if message is None or category_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -278,9 +267,7 @@ async def process_create_step(
     if position + 1 < len(_CREATE_STEPS):
         next_state, _, prompt_key = _CREATE_STEPS[position + 1]
         await state.set_state(next_state)
-        await message.answer(
-            i18n.t(prompt_key), reply_markup=admin_cancel_keyboard(i18n)
-        )
+        await message.answer(i18n.t(prompt_key), reply_markup=admin_cancel_keyboard(i18n))
         return
 
     async with confirm_once(state, lock_key=f"sub:create:{message.chat.id}") as data:
@@ -336,7 +323,7 @@ async def pick_language(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_EDIT_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -358,7 +345,7 @@ async def start_rename(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     if callback.data is None or message is None:
         await callback.answer()
         return
@@ -413,9 +400,7 @@ async def process_rename(
         await message.answer(i18n.t("admin.subcategory_not_found"))
         return
 
-    await admin.set_subcategory_names(
-        subcategory, **{_LANGUAGE_FIELDS[language]: value}
-    )
+    await admin.set_subcategory_names(subcategory, **{_LANGUAGE_FIELDS[language]: value})
     await session.flush()
     await state.clear()
 
@@ -451,7 +436,7 @@ async def toggle_active(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_TOGGLE_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -481,7 +466,7 @@ async def _move(
     prefix: str,
     direction: int,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, prefix)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -493,9 +478,7 @@ async def _move(
         await callback.answer(i18n.t("admin.subcategory_not_found"), show_alert=True)
         return
 
-    await admin.move_subcategory(
-        subcategory.category_id, sub_id, direction=direction
-    )
+    await admin.move_subcategory(subcategory.category_id, sub_id, direction=direction)
     await session.flush()
     await callback.answer(i18n.t("admin.subcategory_order_updated"))
     await _render_card(message, i18n, session, subcategory, edit=True)
@@ -525,7 +508,7 @@ async def ask_assign(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_ASSIGN_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -551,7 +534,7 @@ async def confirm_assign(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     if callback.data is None or message is None:
         await callback.answer()
         return
@@ -573,9 +556,7 @@ async def confirm_assign(
     logger.info("Admin moved subcategory id=%s to category_id=%s", sub_id, category_id)
 
     await callback.answer()
-    await message.answer(
-        i18n.t("admin.subcategory_assigned", category=e(category.name_ru))
-    )
+    await message.answer(i18n.t("admin.subcategory_assigned", category=e(category.name_ru)))
     await _render_card(message, i18n, session, subcategory, edit=True)
 
 
@@ -590,7 +571,7 @@ async def confirm_delete(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_DELETE_OK_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
@@ -613,9 +594,7 @@ async def confirm_delete(
 
     logger.info("Admin deleted subcategory id=%s", sub_id)
     await callback.answer()
-    await message.answer(
-        i18n.t("admin.subcategory_deleted", name=e(name), subcategory_id=sub_id)
-    )
+    await message.answer(i18n.t("admin.subcategory_deleted", name=e(name), subcategory_id=sub_id))
     await _render_list(message, i18n, session, category_id)
 
 
@@ -625,7 +604,7 @@ async def ask_delete(
     i18n: LocalizationService,
     session: AsyncSession,
 ) -> None:
-    message = _chat_message(callback)
+    message = as_message(callback)
     sub_id = parse_callback_id(callback.data, CALLBACK_SUB_DELETE_PREFIX)
     if message is None or sub_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)

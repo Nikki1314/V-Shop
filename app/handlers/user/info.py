@@ -31,6 +31,7 @@ from app.services.localization import LocalizationService
 from app.services.review import ReviewService
 from app.services.user import UserService
 from app.utils.html import e
+from app.utils.telegram_ui import as_message
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +57,7 @@ def _city_label(i18n: LocalizationService, user: User) -> str:
 
 
 def _info_intro(i18n: LocalizationService, user: User) -> str:
-    return (
-        f"{i18n.t('info.title')}\n\n"
-        f"{i18n.t('info.intro', city=e(_city_label(i18n, user)))}"
-    )
+    return f"{i18n.t('info.title')}\n\n{i18n.t('info.intro', city=e(_city_label(i18n, user)))}"
 
 
 def _topic_text(i18n: LocalizationService, user: User, topic: str) -> str:
@@ -118,7 +116,8 @@ async def info_open_callback(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -127,14 +126,14 @@ async def info_open_callback(
     await callback.answer()
     try:
         await _render_info_menu(
-            message=callback.message,
+            message=message,
             user=user,
             i18n=localized,
             edit=True,
         )
     except TelegramBadRequest:
         await _render_info_menu(
-            message=callback.message,
+            message=message,
             user=user,
             i18n=localized,
             edit=False,
@@ -149,7 +148,8 @@ async def info_topic_callback(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.data is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or callback.data is None or message is None:
         await callback.answer()
         return
 
@@ -163,7 +163,7 @@ async def info_topic_callback(
     await callback.answer()
     try:
         await _render_topic(
-            message=callback.message,
+            message=message,
             user=user,
             i18n=localized,
             topic=topic,
@@ -171,7 +171,7 @@ async def info_topic_callback(
         )
     except TelegramBadRequest:
         await _render_topic(
-            message=callback.message,
+            message=message,
             user=user,
             i18n=localized,
             topic=topic,
@@ -185,14 +185,15 @@ async def info_change_language(
     state: FSMContext,
     i18n: LocalizationService,
 ) -> None:
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         await callback.answer()
         return
 
     from app.handlers.user.start import _ask_language
 
     await callback.answer()
-    await _ask_language(callback.message, i18n, state)
+    await _ask_language(message, i18n, state)
 
 
 @router.callback_query(F.data == CALLBACK_INFO_CHANGE_CITY)
@@ -202,7 +203,8 @@ async def info_change_city(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -212,7 +214,7 @@ async def info_change_city(
     from app.handlers.user.start import _ask_city
 
     await callback.answer()
-    await _ask_city(callback.message, localized, state)
+    await _ask_city(message, localized, state)
 
 
 @router.callback_query(F.data == CALLBACK_INFO_REVIEWS)
@@ -243,9 +245,7 @@ async def info_reviews(
             callback.from_user.id,
             settings.reviews_enabled,
         )
-        await callback.answer(
-            localized.t("info.reviews_unavailable"), show_alert=True
-        )
+        await callback.answer(localized.t("info.reviews_unavailable"), show_alert=True)
         return
 
     await callback.answer()

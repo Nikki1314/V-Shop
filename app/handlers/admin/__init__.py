@@ -11,10 +11,12 @@ from app.handlers.admin import (
     panel,
     product_manage,
     products,
-    settings as admin_settings,
     statistics,
     subcategories,
     wizard_guard,
+)
+from app.handlers.admin import (
+    settings as admin_settings,
 )
 from app.middlewares.admin import AdminOnlyMiddleware
 

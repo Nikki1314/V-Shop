@@ -39,16 +39,12 @@ from app.services.catalog import CatalogService
 from app.services.localization import LocalizationService
 from app.utils.html import e
 from app.utils.product_display import format_product_card, localized_category_name
+from app.utils.telegram_ui import as_message
 from app.utils.validators import parse_positive_int
 
 logger = logging.getLogger(__name__)
 
 router = Router(name="user_catalog")
-
-
-def _message(callback: CallbackQuery) -> Message | None:
-    message = callback.message
-    return message if isinstance(message, Message) else None
 
 
 async def _render(
@@ -123,7 +119,7 @@ async def back_to_categories(
     i18n: LocalizationService,
 ) -> None:
     """Back from brands, and 'continue shopping' from the cart."""
-    message = _message(callback)
+    message = as_message(callback)
     if message is None:
         await callback.answer()
         return
@@ -143,14 +139,12 @@ async def open_category(
     i18n: LocalizationService,
 ) -> None:
     """A category was chosen — show its brands."""
-    message = _message(callback)
+    message = as_message(callback)
     if message is None or callback.data is None:
         await callback.answer()
         return
 
-    category_id = parse_positive_int(
-        callback.data.removeprefix(CALLBACK_CATEGORY_PREFIX)
-    )
+    category_id = parse_positive_int(callback.data.removeprefix(CALLBACK_CATEGORY_PREFIX))
     if category_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
         return
@@ -195,14 +189,12 @@ async def open_subcategory(
     i18n: LocalizationService,
 ) -> None:
     """A brand was chosen — show its products. Also Back from a product card."""
-    message = _message(callback)
+    message = as_message(callback)
     if message is None or callback.data is None:
         await callback.answer()
         return
 
-    subcategory_id = parse_positive_int(
-        callback.data.removeprefix(CALLBACK_SUBCATEGORY_PREFIX)
-    )
+    subcategory_id = parse_positive_int(callback.data.removeprefix(CALLBACK_SUBCATEGORY_PREFIX))
     if subcategory_id is None:
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
         return
@@ -217,9 +209,7 @@ async def open_subcategory(
     await callback.answer()
     header = i18n.t(
         "catalog.subcategory_opened",
-        category=e(
-            localized_category_name(category, i18n.language) if category else ""
-        ),
+        category=e(localized_category_name(category, i18n.language) if category else ""),
         name=e(localized_category_name(subcategory, i18n.language)),
     )
     if not products:
@@ -250,9 +240,7 @@ async def _send_product_card(
     i18n: LocalizationService,
 ) -> None:
     caption = format_product_card(product, i18n)
-    markup = add_to_cart_keyboard(
-        i18n, product.id, subcategory_id=product.subcategory_id
-    )
+    markup = add_to_cart_keyboard(i18n, product.id, subcategory_id=product.subcategory_id)
 
     if product.image_file_id:
         try:
@@ -279,7 +267,7 @@ async def open_product(
     i18n: LocalizationService,
 ) -> None:
     """A product was chosen — show its card."""
-    message = _message(callback)
+    message = as_message(callback)
     if message is None or callback.data is None:
         await callback.answer()
         return

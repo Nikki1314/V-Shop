@@ -49,19 +49,14 @@ def upgrade() -> None:
     op.add_column("categories", sa.Column("name_de", sa.String(255), nullable=True))
     op.add_column("categories", sa.Column("name_uk", sa.String(255), nullable=True))
     op.execute(
-        "UPDATE categories SET name_ru = name, name_en = name, "
-        "name_de = name, name_uk = name"
+        "UPDATE categories SET name_ru = name, name_en = name, name_de = name, name_uk = name"
     )
     for column in ("name_ru", "name_en", "name_de", "name_uk"):
-        op.alter_column(
-            "categories", column, existing_type=sa.String(255), nullable=False
-        )
+        op.alter_column("categories", column, existing_type=sa.String(255), nullable=False)
 
     op.add_column(
         "categories",
-        sa.Column(
-            "is_active", sa.Boolean(), server_default=sa.true(), nullable=False
-        ),
+        sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False),
     )
     op.add_column(
         "categories",
@@ -144,15 +139,9 @@ def upgrade() -> None:
 
     op.add_column("products", sa.Column("name_uk", sa.String(255), nullable=True))
     op.add_column("products", sa.Column("description_uk", sa.Text(), nullable=True))
-    op.execute(
-        "UPDATE products SET name_uk = name_ru, description_uk = description_ru"
-    )
-    op.alter_column(
-        "products", "name_uk", existing_type=sa.String(255), nullable=False
-    )
-    op.alter_column(
-        "products", "description_uk", existing_type=sa.Text(), nullable=False
-    )
+    op.execute("UPDATE products SET name_uk = name_ru, description_uk = description_ru")
+    op.alter_column("products", "name_uk", existing_type=sa.String(255), nullable=False)
+    op.alter_column("products", "description_uk", existing_type=sa.Text(), nullable=False)
 
     op.add_column(
         "products",
@@ -182,9 +171,7 @@ def downgrade() -> None:
     op.drop_column("products", "updated_at")
     op.drop_column("products", "description_uk")
     op.drop_column("products", "name_uk")
-    op.drop_constraint(
-        "products_subcategory_id_fkey", "products", type_="foreignkey"
-    )
+    op.drop_constraint("products_subcategory_id_fkey", "products", type_="foreignkey")
     op.drop_column("products", "subcategory_id")
 
     op.drop_index("ix_subcategories_sort_order", table_name="subcategories")

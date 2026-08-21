@@ -52,9 +52,7 @@ class MonthBounds:
 
 def month_start(moment: datetime) -> datetime:
     """Midnight on the first of ``moment``'s month, keeping its zone."""
-    return moment.replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    return moment.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
 def month_bounds(now: datetime | None = None, timezone: str | None = None) -> MonthBounds:
@@ -65,7 +63,7 @@ def month_bounds(now: datetime | None = None, timezone: str | None = None) -> Mo
     month starting then, and never to both.
     """
     tz = resolve_timezone(timezone)
-    moment = (now.astimezone(tz) if now is not None else datetime.now(tz))
+    moment = now.astimezone(tz) if now is not None else datetime.now(tz)
 
     current = month_start(moment)
     previous = month_start(
@@ -78,6 +76,4 @@ def month_bounds(now: datetime | None = None, timezone: str | None = None) -> Mo
         if current.month == 12
         else current.replace(month=current.month + 1)
     )
-    return MonthBounds(
-        current_start=current, previous_start=previous, next_start=following
-    )
+    return MonthBounds(current_start=current, previous_start=previous, next_start=following)

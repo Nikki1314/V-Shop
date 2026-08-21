@@ -47,13 +47,13 @@ def at(month: int, day: int, hour: int = 12, minute: int = 0) -> datetime:
 ON_SALE, HIDDEN_BRAND, RETIRED_CATEGORY = "on-sale", "hidden-brand", "retired-category"
 
 PRODUCTS: tuple[tuple[str, bool, str], ...] = (
-    ("mango", True, ON_SALE),             # in many completed orders
-    ("berry", True, ON_SALE),             # in several, one twice across two lines
-    ("ice", True, ON_SALE),               # in exactly one completed order
-    ("mint", True, ON_SALE),              # only in cancelled / new -> zero completed
-    ("void", True, ON_SALE),              # never in any order at all
-    ("ghost", False, ON_SALE),            # inactive product, parents both visible
-    ("shelved", True, HIDDEN_BRAND),      # active, but its brand is deactivated
+    ("mango", True, ON_SALE),  # in many completed orders
+    ("berry", True, ON_SALE),  # in several, one twice across two lines
+    ("ice", True, ON_SALE),  # in exactly one completed order
+    ("mint", True, ON_SALE),  # only in cancelled / new -> zero completed
+    ("void", True, ON_SALE),  # never in any order at all
+    ("ghost", False, ON_SALE),  # inactive product, parents both visible
+    ("shelved", True, HIDDEN_BRAND),  # active, but its brand is deactivated
     ("archived", True, RETIRED_CATEGORY),  # active, but its category is deactivated
 )
 
@@ -158,10 +158,17 @@ async def shop(session: AsyncSession) -> Shop:
         products[key] = await admin.create_product(
             category_id=category.id,
             subcategory_id=subcategory.id,
-            name_ru=key, name_en=key, name_de=key, name_uk=key,
-            description_ru="d", description_en="d",
-            description_de="d", description_uk="d",
-            flavor="f", volume="30ml", nicotine_strength="3mg",
+            name_ru=key,
+            name_en=key,
+            name_de=key,
+            name_uk=key,
+            description_ru="d",
+            description_en="d",
+            description_de="d",
+            description_uk="d",
+            flavor="f",
+            volume="30ml",
+            nicotine_strength="3mg",
             price=Decimal("10.00"),
             is_active=is_active,
         )
@@ -175,10 +182,17 @@ async def shop(session: AsyncSession) -> Shop:
     orders: dict[str, Order] = {}
     for label, when, status, total, lines in ORDERS:
         order = Order(
-            user_id=buyer.id, customer_name="QA", city="berlin",
-            delivery_type="pickup", address="X", preferred_time="18:00",
-            phone=None, total_price=Decimal(total), status=status,
-            payment_method=PaymentMethod.CASH, created_at=when,
+            user_id=buyer.id,
+            customer_name="QA",
+            city="berlin",
+            delivery_type="pickup",
+            address="X",
+            preferred_time="18:00",
+            phone=None,
+            total_price=Decimal(total),
+            status=status,
+            payment_method=PaymentMethod.CASH,
+            created_at=when,
         )
         session.add(order)
         await session.flush()

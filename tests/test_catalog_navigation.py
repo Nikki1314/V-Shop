@@ -24,9 +24,7 @@ from app.services.catalog import CatalogService
 from app.services.localization import LocalizationService
 from app.utils.cache import invalidate_categories_cache
 
-BASE = dict(
-    flavor="Mango", volume="30ml", nicotine_strength="3mg", price=Decimal("12.50")
-)
+BASE = dict(flavor="Mango", volume="30ml", nicotine_strength="3mg", price=Decimal("12.50"))
 
 
 @pytest.fixture(autouse=True)
@@ -46,18 +44,32 @@ async def _shop(session: AsyncSession):  # type: ignore[no-untyped-def]
     """Liquids › Brand A › Mango, all active."""
     admin = AdminService(session)
     category = await admin.create_category(
-        "Liquids", name_ru="Жидкости", name_en="Liquids",
-        name_de="Liquids DE", name_uk="Рідини",
+        "Liquids",
+        name_ru="Жидкости",
+        name_en="Liquids",
+        name_de="Liquids DE",
+        name_uk="Рідини",
     )
     brand = await admin.create_subcategory(
-        category_id=category.id, name="Brand A",
-        name_ru="Бренд А", name_en="Brand A", name_de="Marke A", name_uk="Бренд А",
+        category_id=category.id,
+        name="Brand A",
+        name_ru="Бренд А",
+        name_en="Brand A",
+        name_de="Marke A",
+        name_uk="Бренд А",
     )
     await session.flush()
     product = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="о", description_en="d", description_de="b", description_uk="о",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
+        description_uk="о",
         **BASE,
     )
     await session.flush()
@@ -203,9 +215,16 @@ async def test_hidden_brand_removes_its_products(session: AsyncSession) -> None:
 async def test_hidden_product_leaves_its_siblings(session: AsyncSession) -> None:
     admin, category, brand, product = await _shop(session)
     sibling = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Ягоды", name_en="Berry", name_de="Beere", name_uk="Ягоди",
-        description_ru="о", description_en="d", description_de="b", description_uk="о",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Ягоды",
+        name_en="Berry",
+        name_de="Beere",
+        name_uk="Ягоди",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
+        description_uk="о",
         **BASE,
     )
     await session.flush()
@@ -227,9 +246,7 @@ async def test_product_card_keeps_the_cart_contract(session: AsyncSession) -> No
     _admin, _category, brand, product = await _shop(session)
     i18n = LocalizationService.from_code("en")
 
-    payloads = _payloads(
-        add_to_cart_keyboard(i18n, product.id, subcategory_id=brand.id)
-    )
+    payloads = _payloads(add_to_cart_keyboard(i18n, product.id, subcategory_id=brand.id))
     assert payloads[0] == f"{CALLBACK_CART_ADD_PREFIX}{product.id}"
     assert CALLBACK_CART_OPEN in payloads
 
@@ -271,8 +288,7 @@ async def test_buttons_are_labelled_in_the_users_language(
         assert _labels(categories_keyboard(cats, code))[0] == cat_name
         assert _labels(subcategories_keyboard(i18n, brands))[0] == brand_name
         assert (
-            _labels(products_keyboard(i18n, products, category_id=category.id))[0]
-            == product_name
+            _labels(products_keyboard(i18n, products, category_id=category.id))[0] == product_name
         )
 
 

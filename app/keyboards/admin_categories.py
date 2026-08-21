@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.models.category import Category
 from app.services.localization import LocalizationService
+from app.utils.product_display import localized_category_name
 from app.utils.telegram_ui import truncate_button_label
 
 CALLBACK_CATEGORY_CREATE = "admin:cat:create"
@@ -32,9 +33,7 @@ LANGUAGE_KEYS: tuple[tuple[str, str], ...] = (
 
 def _status_mark(i18n: LocalizationService, category: Category) -> str:
     return i18n.t(
-        "admin.category_status_active"
-        if category.is_active
-        else "admin.category_status_inactive"
+        "admin.category_status_active" if category.is_active else "admin.category_status_inactive"
     )
 
 
@@ -65,7 +64,8 @@ def categories_admin_list_keyboard(
         [
             InlineKeyboardButton(
                 text=truncate_button_label(
-                    f"{_status_mark(i18n, category)} {category.name_ru}"
+                    f"{_status_mark(i18n, category)} "
+                    f"{localized_category_name(category, i18n.language)}"
                 ),
                 callback_data=f"{CALLBACK_CATEGORY_VIEW_PREFIX}{category.id}",
             )
@@ -124,9 +124,7 @@ def category_manage_keyboard(
         [
             InlineKeyboardButton(
                 text=i18n.t(
-                    "admin.category_deactivate"
-                    if category.is_active
-                    else "admin.category_activate"
+                    "admin.category_deactivate" if category.is_active else "admin.category_activate"
                 ),
                 callback_data=f"{CALLBACK_CATEGORY_TOGGLE_PREFIX}{cid}",
             )

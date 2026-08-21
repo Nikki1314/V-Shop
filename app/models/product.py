@@ -39,7 +39,8 @@ class Product(Base, TimestampMixin, UpdatedAtMixin):
     subcategory_id: Mapped[int | None] = mapped_column(
         ForeignKey("subcategories.id", ondelete="RESTRICT"),
         nullable=True,
-        index=True,
+        # No single-column index: ix_products_subcategory_id_is_active leads
+        # with subcategory_id and serves every lookup on it.
     )
     # Legacy direct category link (deprecated; superseded by subcategory_id).
     category_id: Mapped[int] = mapped_column(

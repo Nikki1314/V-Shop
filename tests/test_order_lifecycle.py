@@ -48,15 +48,22 @@ async def _order(session: AsyncSession, telegram_id: int) -> Order:
     category = await make_category(session, name="Liquids")
     product = await make_product(session, category, name_en="Mango", price="10.00")
     user = await make_user(
-        session, telegram_id=telegram_id,
-        language=LanguageCode.EN, city=CityChoice.BERLIN,
+        session,
+        telegram_id=telegram_id,
+        language=LanguageCode.EN,
+        city=CityChoice.BERLIN,
     )
     await session.flush()
     await CartService(session).add_product(user.id, product, quantity=1)
     await session.flush()
     return await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="X",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CASH,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="X",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CASH,
     )
 
 
@@ -69,7 +76,11 @@ def _buttons(markup):  # type: ignore[no-untyped-def]
 
 def test_five_statuses_in_lifecycle_order() -> None:
     assert [s.value for s in OrderStatus] == [
-        "New", "Accepted", "Shipped", "Completed", "Cancelled",
+        "New",
+        "Accepted",
+        "Shipped",
+        "Completed",
+        "Cancelled",
     ]
 
 
@@ -92,10 +103,7 @@ def test_every_status_has_a_label(language: str) -> None:
 def test_shipped_label_is_translated(language: str) -> None:
     i18n = LocalizationService.from_code(language)
     assert i18n.t("admin.order_status_shipped").startswith("📦")
-    rendered = {
-        LocalizationService.from_code(c).t("admin.order_status_shipped")
-        for c in LANGS
-    }
+    rendered = {LocalizationService.from_code(c).t("admin.order_status_shipped") for c in LANGS}
     assert len(rendered) == len(LANGS)
 
 
@@ -117,7 +125,9 @@ def test_full_transition_matrix(current: OrderStatus, target: OrderStatus) -> No
 def test_terminal_states_are_dead_ends() -> None:
     assert TERMINAL_STATUSES == {OrderStatus.COMPLETED}
     assert ACTIVE_STATUSES == {
-        OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.SHIPPED,
+        OrderStatus.NEW,
+        OrderStatus.ACCEPTED,
+        OrderStatus.SHIPPED,
     }
     for status in TERMINAL_STATUSES:
         assert is_terminal(status)
@@ -131,8 +141,10 @@ def test_no_status_can_move_to_itself() -> None:
 
 def test_the_happy_path_is_linear() -> None:
     chain = [
-        OrderStatus.NEW, OrderStatus.ACCEPTED,
-        OrderStatus.SHIPPED, OrderStatus.COMPLETED,
+        OrderStatus.NEW,
+        OrderStatus.ACCEPTED,
+        OrderStatus.SHIPPED,
+        OrderStatus.COMPLETED,
     ]
     for current, target in zip(chain, chain[1:], strict=False):
         assert can_transition(current, target)
@@ -228,9 +240,7 @@ async def test_setting_the_same_status_is_a_no_op(session: AsyncSession) -> None
 @pytest.mark.asyncio
 async def test_cancel_from_each_active_state(session: AsyncSession) -> None:
     admin = AdminService(session)
-    for index, start in enumerate(
-        (OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.SHIPPED)
-    ):
+    for index, start in enumerate((OrderStatus.NEW, OrderStatus.ACCEPTED, OrderStatus.SHIPPED)):
         order = await _order(session, 11_300 + index)
         await session.flush()
         await OrderRepository(session).update_status(order, start)
@@ -248,11 +258,13 @@ async def test_allowed_next_statuses_helper(session: AsyncSession) -> None:
     await session.flush()
 
     assert admin.allowed_next_statuses(order) == (
-        OrderStatus.ACCEPTED, OrderStatus.CANCELLED,
+        OrderStatus.ACCEPTED,
+        OrderStatus.CANCELLED,
     )
     order = await admin.set_order_status(order, OrderStatus.ACCEPTED)
     assert admin.allowed_next_statuses(order) == (
-        OrderStatus.SHIPPED, OrderStatus.CANCELLED,
+        OrderStatus.SHIPPED,
+        OrderStatus.CANCELLED,
     )
 
 
@@ -280,10 +292,7 @@ def test_keyboard_offers_only_legal_moves(current: OrderStatus) -> None:
         for _, data in _buttons(order_manage_keyboard(i18n, order, list_kind="new", page=0))  # type: ignore[arg-type]
         if data.startswith(CALLBACK_ORDER_STATUS_PREFIX)
     ]
-    offered = {
-        p.removeprefix(CALLBACK_ORDER_STATUS_PREFIX).split(":")[1]
-        for p in payloads
-    }
+    offered = {p.removeprefix(CALLBACK_ORDER_STATUS_PREFIX).split(":")[1] for p in payloads}
 
     assert offered == {status_code(s) for s in EXPECTED[current]}
 
@@ -293,9 +302,7 @@ def test_completed_orders_show_no_status_buttons() -> None:
     order = type("O", (), {"id": 7, "status": OrderStatus.COMPLETED})()
     entries = _buttons(order_manage_keyboard(i18n, order, list_kind="done", page=0))  # type: ignore[arg-type]
 
-    assert not any(
-        data.startswith(CALLBACK_ORDER_STATUS_PREFIX) for _, data in entries
-    )
+    assert not any(data.startswith(CALLBACK_ORDER_STATUS_PREFIX) for _, data in entries)
     assert len(entries) == 1  # only Back
 
 
@@ -306,9 +313,7 @@ def test_cancelled_orders_offer_a_reopen_button(language: str) -> None:
     entries = _buttons(order_manage_keyboard(i18n, order, list_kind="done", page=0))  # type: ignore[arg-type]
 
     actions = [
-        (text, data)
-        for text, data in entries
-        if data.startswith(CALLBACK_ORDER_STATUS_PREFIX)
+        (text, data) for text, data in entries if data.startswith(CALLBACK_ORDER_STATUS_PREFIX)
     ]
     assert len(actions) == 1
     label, payload = actions[0]
@@ -336,8 +341,12 @@ def test_mark_as_shipped_action_is_offered_and_localized(language: str) -> None:
 
 
 def test_action_labels_differ_per_language() -> None:
-    for key in ("admin.order_action_ship", "admin.order_action_accept",
-                "admin.order_action_complete", "admin.order_action_cancel"):
+    for key in (
+        "admin.order_action_ship",
+        "admin.order_action_accept",
+        "admin.order_action_complete",
+        "admin.order_action_cancel",
+    ):
         rendered = {LocalizationService.from_code(c).t(key) for c in LANGS}
         assert len(rendered) == len(LANGS), key
 

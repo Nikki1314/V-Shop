@@ -1,0 +1,1686 @@
+# Product Requirements Document (PRD)
+
+# Telegram E-Commerce Shop Bot
+
+**Version:** 2.0
+
+**Platform:** Telegram
+
+**Backend:** Python / aiogram
+
+**Database:** PostgreSQL
+
+**Supported Languages:** Russian, English, German, Ukrainian
+
+---
+
+# 1. Project Overview
+
+The project is a Telegram-based e-commerce shop for selling vape e-liquids.
+
+The bot provides:
+
+- multilingual user interface;
+- product catalog;
+- hierarchical product navigation;
+- shopping cart;
+- checkout;
+- order management;
+- administrator panel;
+- manager notifications;
+- customer order status notifications;
+- broadcast messaging;
+- customer review group integration;
+- sales and product statistics.
+
+The bot must be fast, intuitive, mobile-first and easy to maintain.
+
+The entire administration workflow must be available through Telegram without requiring a separate web administration panel.
+
+---
+
+# 2. Supported Languages
+
+The bot must support four languages:
+
+- 🇷🇺 Russian (`ru`)
+- 🇬🇧 English (`en`)
+- 🇩🇪 German (`de`)
+- 🇺🇦 Ukrainian (`uk`)
+
+The user selects a language during the first launch.
+
+The selected language must be persisted in the database.
+
+The user must be able to change the language later through the Information section.
+
+All user-facing interface elements must be localized:
+
+- menus;
+- buttons;
+- catalog;
+- categories;
+- subcategories;
+- product cards;
+- cart;
+- checkout;
+- validation messages;
+- order confirmations;
+- order status notifications;
+- information pages;
+- review group instructions;
+- error messages.
+
+No user-facing text should be hardcoded inside handlers.
+
+The localization system must allow additional languages to be added later without modifying business logic.
+
+Recommended structure:
+
+```text
+locales/
+
+    ru.json
+    en.json
+    de.json
+    uk.json
+
+3. User Profile
+
+The User model must contain at least:
+
+id
+telegram_id
+username
+first_name
+language
+selected_city
+created_at
+last_seen
+
+Supported language values:
+
+ru
+en
+de
+uk
+
+Supported city values:
+
+berlin
+delivery
+
+The selected language and city must survive:
+
+bot restart;
+application restart;
+Docker container restart;
+deployment;
+database migration.
+4. First Launch / Onboarding
+
+When a user sends:
+
+/start
+
+the bot checks whether the user already has a stored profile.
+
+New User
+
+The bot first asks for language.
+
+Buttons:
+
+🇷🇺 Русский
+🇬🇧 English
+🇩🇪 Deutsch
+🇺🇦 Українська
+
+After language selection, all subsequent messages must use the selected language.
+
+The bot then asks the user to select a city.
+
+Buttons:
+
+📍 Berlin
+📦 Other Cities (Delivery)
+
+The selected city is stored in the database.
+
+After completing onboarding, the user is shown the Main Menu.
+
+Existing User
+
+Existing users must not be forced through onboarding again.
+
+The bot should immediately show the Main Menu.
+
+5. Main Menu
+
+The main Reply Keyboard must contain:
+
+🛍 Ассортимент
+🛒 Корзина
+ℹ️ Информация
+
+The exact button text must be localized according to the user's language.
+
+The internal handler naming may use English identifiers, but user-facing labels must be localized.
+
+6. Product Catalog
+6.1 Catalog Structure
+
+The catalog must use a three-level hierarchy:
+
+Catalog
+    ↓
+Category
+    ↓
+Subcategory / Brand
+    ↓
+Product
+
+Example:
+
+🛍 Ассортимент
+
+
+├── Жидкости
+│   ├── Brand A
+│   │   ├── Product 1
+│   │   ├── Product 2
+│   │   └── Product 3
+│   │
+│   └── Brand B
+│       ├── Product 4
+│       └── Product 5
+│
+└── Disposable Products
+    ├── Brand C
+    └── Brand D
+
+The implementation must not hardcode these names.
+
+Categories and subcategories must be managed through the admin panel.
+
+7. Catalog User Flow
+
+When the user presses:
+
+🛍 Ассортимент
+
+the bot displays available categories as buttons.
+
+Example:
+
+[ Category 1 ]
+
+
+[ Category 2 ]
+
+
+[ Category 3 ]
+
+The user selects a category.
+
+The bot then displays available subcategories / brands belonging to that category.
+
+Example:
+
+[ Brand A ]
+
+
+[ Brand B ]
+
+
+[ Brand C ]
+
+The user selects a subcategory / brand.
+
+The bot then displays all available products belonging to that subcategory.
+
+Products must be displayed as buttons.
+
+Example:
+
+[ Product 1 ]
+
+
+[ Product 2 ]
+
+
+[ Product 3 ]
+
+The user selects a product.
+
+The bot displays the complete product card.
+
+8. Product Card
+
+A product card must contain:
+
+product photo;
+localized product name;
+localized description;
+flavor;
+volume;
+nicotine strength;
+price;
+availability status where appropriate.
+
+The product card must contain buttons for:
+
+📥 Add to Cart
+🛒 Open Cart
+⬅️ Back
+
+The Back button must return the user to the previous catalog level.
+
+The user should be able to navigate:
+
+Product
+    ↓ Back
+Products in Subcategory
+    ↓ Back
+Subcategories
+    ↓ Back
+Categories
+
+The navigation must not reset the entire catalog.
+
+9. Product Data Model
+
+The Product model must support the new hierarchy.
+
+Recommended structure:
+
+Product
+
+
+- id
+- subcategory_id
+- name_ru
+- name_en
+- name_de
+- name_uk
+- description_ru
+- description_en
+- description_de
+- description_uk
+- flavor
+- volume
+- nicotine_strength
+- price
+- image_file_id
+- is_active
+- created_at
+- updated_at
+10. Category Data Model
+
+The catalog should contain separate entities for categories and subcategories.
+
+Category
+- id
+- name_ru
+- name_en
+- name_de
+- name_uk
+- sort_order
+- is_active
+- created_at
+- updated_at
+Subcategory
+- id
+- category_id
+- name_ru
+- name_en
+- name_de
+- name_uk
+- sort_order
+- is_active
+- created_at
+- updated_at
+
+Relationship:
+
+Category
+    |
+    └── Subcategory
+            |
+            └── Products
+
+A category may contain multiple subcategories.
+
+A subcategory belongs to exactly one category.
+
+A product belongs to exactly one subcategory.
+
+11. Cart
+
+The cart must support:
+
+adding products;
+increasing quantity;
+decreasing quantity;
+removing products;
+displaying individual prices;
+displaying total quantity;
+displaying total price;
+proceeding to checkout.
+
+Cart data must be persisted in PostgreSQL.
+
+The cart must survive:
+
+bot restart;
+application restart;
+Docker restart.
+12. Checkout
+
+The checkout process must be implemented as an FSM / state-based conversation.
+
+Step 1 — Customer Name
+
+Ask for:
+
+Customer name
+Step 2 — Delivery Method
+
+If city is Berlin:
+
+🏪 Pickup
+🚗 Courier
+
+If city is Other Cities:
+
+📦 Postal Delivery
+🚚 Delivery Service
+Step 3 — Address / Pickup Location
+
+Ask for:
+
+Delivery address
+
+or:
+
+Pickup location
+
+depending on the selected delivery method.
+
+Also ask:
+
+🕒 Preferred delivery time
+Step 4 — Contact Information
+
+Allow the user to provide:
+
+📞 Phone number
+
+or use the Telegram account as the contact method.
+
+Step 5 — Preferred Payment Method
+
+The user must select a preferred payment method.
+
+Buttons:
+
+💵 Cash
+💳 Card Transfer
+
+The selected payment method must be stored with the order.
+
+The payment method must be displayed to administrators together with the order.
+
+Step 6 — Order Confirmation
+
+Display the complete order summary:
+
+customer name;
+city;
+delivery method;
+address / pickup location;
+preferred time;
+contact information;
+preferred payment method;
+products;
+quantities;
+total amount.
+
+Buttons:
+
+✅ Confirm Order
+❌ Cancel
+
+After confirmation:
+
+Create the order.
+Create order items.
+Clear the cart.
+Send confirmation to the customer.
+Notify managers.
+
+The system must prevent accidental duplicate order creation if the user presses Confirm multiple times.
+
+13. Order Statuses
+
+The order lifecycle must support:
+
+New
+Accepted
+Shipped
+Completed
+Cancelled
+
+Meaning:
+
+New
+
+The order has been created by the customer and has not yet been processed.
+
+Accepted
+
+An administrator has accepted the order and started processing it.
+
+Shipped
+
+The order has been sent / handed over to the delivery service or otherwise dispatched to the customer.
+
+Completed
+
+The order has been successfully completed.
+
+Cancelled
+
+The order has been cancelled.
+
+14. Admin Order Management
+
+Administrators must be able to:
+
+view orders;
+open order details;
+search orders by ID;
+filter orders by status;
+change order status.
+
+For orders that are not yet completed or cancelled, the administrator must have an option to set:
+
+📦 Shipped
+
+The available status transitions should prevent nonsensical transitions where possible.
+
+Example:
+
+New
+ ↓
+Accepted
+ ↓
+Shipped
+ ↓
+Completed
+
+Cancellation should be possible from an appropriate active state.
+
+15. Customer Order Status Notifications
+
+Whenever an administrator changes an order status, the customer must receive a notification.
+
+Notifications must be localized according to the user's selected language.
+
+The bot must notify the customer when the order becomes:
+
+Accepted
+Shipped
+Completed
+Cancelled
+
+Example:
+
+✅ Your order #123 has been accepted.
+
+or:
+
+📦 Your order #123 has been shipped.
+
+or:
+
+🎉 Your order #123 has been completed.
+
+or:
+
+❌ Your order #123 has been cancelled.
+
+The exact wording must be localized.
+
+The notification must include the Order ID.
+
+The system should avoid sending duplicate status notifications if the status was not actually changed.
+
+16. Manager Order Notifications
+
+Every new order must immediately be sent to the configured manager chat.
+
+The manager notification must include:
+
+Order ID;
+customer name;
+Telegram username;
+Telegram ID;
+city;
+delivery method;
+address / pickup location;
+preferred delivery time;
+phone/contact information;
+preferred payment method;
+ordered products;
+quantities;
+total amount;
+creation timestamp;
+current status.
+
+The manager chat is intended for receiving notifications only.
+
+The bot must not treat the manager group as a user interface.
+
+17. Group Chat Isolation
+
+The bot must NOT process user or administrator interactions from group chats.
+
+The bot should only process interactive commands and callbacks in:
+
+private chats with users;
+private chats with administrators.
+
+The bot must ignore interactions originating from groups and supergroups.
+
+Requirements:
+
+no command processing in groups;
+no FSM conversations in groups;
+no admin commands in groups;
+no inline interaction flows in groups;
+no Reply Keyboard sent to groups;
+no catalog buttons sent to groups;
+no checkout interaction in groups;
+no broadcast interaction in groups.
+
+The manager group should only receive outgoing order notifications.
+
+The bot must never accidentally respond to messages such as:
+
+/start
+/admin
+/orders
+/stats
+
+when they are sent inside the manager group.
+
+Group messages must be ignored silently.
+
+This restriction must be enforced at the middleware/router/filter level rather than implemented separately in every handler.
+
+18. Reviews / Customer Feedback
+
+Add a new user-facing function allowing customers to access the review group.
+
+The Information section should contain a button such as:
+
+⭐ Reviews
+
+or an equivalent localized label.
+
+When the user presses the button, the bot provides an invite link to the customer review group.
+
+The group is intended for:
+
+customer reviews;
+questions;
+customer communication.
+
+The bot should not expose the group's internal administrative information.
+
+The review group ID must be configurable.
+
+Recommended environment variable:
+
+REVIEW_GROUP_CHAT_ID
+
+The implementation should use a proper Telegram invite link rather than exposing internal group identifiers.
+
+If possible, the bot should generate/manage the invite link through Telegram's API.
+
+If the group is private, the bot must have the necessary permissions to create or manage invite links.
+
+19. Information Section
+
+The Information section must contain:
+
+💳 Payment
+📦 Delivery
+📞 Contacts
+⭐ Reviews
+🌍 Change Language
+📍 Change City
+
+The exact labels must be localized.
+
+20. Payment Information
+
+The PayPal option must currently be removed.
+
+The current payment information should include:
+
+Cash
+
+Available where applicable.
+
+Bank / Card Transfer
+
+Display:
+
+By request
+
+Do not display PayPal.
+
+Payment information must be easy to modify later.
+
+21. Contacts Section
+
+The current Contacts content should temporarily be replaced with:
+
+Under development.
+
+
+If you have any questions, please contact us in the Reviews group.
+
+The message must be localized.
+
+Include a button linking to the Reviews group.
+
+The placeholder should be implemented through localization/configuration so that it can easily be replaced later without modifying handler logic.
+
+22. Statistics Dashboard
+
+Add a new button to the Admin Panel:
+
+📊 Statistics
+
+The Statistics section must display aggregated shop statistics.
+
+All statistics must be calculated from persistent database data.
+
+23. General Statistics
+
+Display:
+
+👥 Total Users
+📂 Categories
+📁 Subcategories
+📦 Products
+🛒 Total Orders
+
+Definitions:
+
+Total Users
+
+Number of registered users in the database.
+
+Categories
+
+Number of active categories.
+
+Subcategories
+
+Number of active subcategories.
+
+Products
+
+Number of active products.
+
+Total Orders
+
+Number of all orders regardless of status.
+
+24. Order Statistics
+
+The Statistics dashboard must display order counts for three periods:
+
+All Time
+Current Month
+Previous Month
+
+For each period display:
+
+Total Orders
+Completed Orders
+Cancelled Orders
+
+Example:
+
+📦 Orders
+
+
+All Time:
+Total: 1250
+Completed: 1080
+Cancelled: 95
+
+
+This Month:
+Total: 142
+Completed: 118
+Cancelled: 8
+
+
+Last Month:
+Total: 176
+Completed: 151
+Cancelled: 12
+
+Orders with other statuses remain included in Total Orders but are not counted as Completed or Cancelled.
+
+25. Revenue Statistics
+
+Display total revenue for:
+
+All Time
+Current Month
+Previous Month
+
+Revenue must be calculated ONLY from orders with:
+
+status = Completed
+
+Cancelled, New, Accepted and Shipped orders must not contribute to revenue.
+
+Example:
+
+💰 Revenue
+
+
+All Time:
+€12,450
+
+
+This Month:
+€1,820
+
+
+Last Month:
+€2,150
+
+Revenue should be calculated from the final order total stored with the order.
+
+Historical order totals must not change if the current product price changes.
+
+26. Product Popularity Statistics
+
+The Statistics dashboard must show:
+
+Top 3 Most Frequently Ordered Products
+
+Display:
+
+🥇 Product A — 152 orders
+🥈 Product B — 121 orders
+🥉 Product C — 98 orders
+
+The metric is the number of distinct orders containing the product.
+
+If the same product appears multiple times in one order, it counts as one order for this statistic.
+
+Top 3 Least Frequently Ordered Products
+
+Display the three active products with the lowest number of distinct orders containing them.
+
+Example:
+
+📉 Least Ordered Products
+
+
+Product X — 2 orders
+Product Y — 3 orders
+Product Z — 4 orders
+
+Products with zero orders should be included if they are active.
+
+The statistics must not count products from cancelled orders unless explicitly specified otherwise.
+
+For consistency, product popularity statistics should be based on completed orders.
+
+27. Statistics Time Zones
+
+All "current month" and "previous month" calculations must use the configured application timezone.
+
+Recommended default:
+
+Europe/Berlin
+
+The timezone must be configurable through environment variables.
+
+Recommended:
+
+APP_TIMEZONE=Europe/Berlin
+
+Avoid relying on the server's local timezone.
+
+28. Admin Panel
+
+Only Telegram IDs listed in:
+
+ADMIN_IDS
+
+may access the admin panel.
+
+The admin panel must contain:
+
+📦 Products
+📂 Categories
+📋 Orders
+📊 Statistics
+📢 Broadcast
+⚙ Settings
+
+Admin interactions must only work in private chats.
+
+29. Product Management
+
+Admins must be able to:
+
+create products;
+edit products;
+delete products;
+enable products;
+disable products;
+change prices;
+change descriptions;
+change product images;
+assign products to subcategories.
+
+The product creation flow must support all four languages.
+
+30. Product Creation Wizard
+
+The wizard should request:
+
+Product photo
+Russian name
+English name
+German name
+Ukrainian name
+Russian description
+English description
+German description
+Ukrainian description
+Category
+Subcategory / Brand
+Flavor
+Volume
+Nicotine strength
+Price
+Confirmation
+
+All data must be persisted transactionally.
+
+31. Category Management
+
+Administrators must be able to:
+
+create category;
+edit category;
+delete category;
+activate/deactivate category;
+change category order.
+
+Category names must support all four languages.
+
+32. Subcategory / Brand Management
+
+Administrators must be able to:
+
+create subcategory;
+edit subcategory;
+delete subcategory;
+activate/deactivate subcategory;
+change subcategory order;
+assign subcategory to a category.
+
+Subcategory names must support all four languages.
+
+The admin interface should clearly display the hierarchy:
+
+Category
+    └── Subcategory
+            └── Products
+
+Deleting a category or subcategory must be handled safely.
+
+The application must not silently delete products unless explicitly intended.
+
+Prefer preventing deletion when dependent products exist, or require explicit administrator confirmation.
+
+# 33. Critical Production Issue — Catalog Disappears After Bot Updates
+
+There is currently a reported production issue:
+
+> "Every time the bot is updated, the assortment disappears."
+
+Important clarification:
+
+The catalog does NOT appear to disappear when an administrator creates, edits or updates products.
+
+The reported issue occurs after the bot/application itself is updated, restarted, redeployed or otherwise replaced.
+
+The exact root cause is currently unknown.
+
+This must be treated as a critical production issue and investigated before or alongside implementation of the new catalog functionality.
+
+The developer must NOT assume that the database is necessarily the root cause.
+
+The investigation must cover the complete application update lifecycle:
+
+- application restart;
+- Docker container restart;
+- Docker Compose recreation;
+- image rebuild;
+- container replacement;
+- deployment scripts;
+- PostgreSQL container lifecycle;
+- PostgreSQL persistent volumes;
+- database connection configuration;
+- DATABASE_URL;
+- environment variables;
+- Alembic migrations;
+- startup initialization;
+- seed scripts;
+- database initialization scripts;
+- automatic schema creation;
+- destructive migrations;
+- application startup tasks;
+- deployment scripts;
+- CI/CD configuration;
+- server filesystem;
+- Docker Compose volume configuration;
+- container filesystem;
+- database hostnames;
+- database names;
+- database users;
+- possible connections to different databases/environments.
+
+The objective is to determine exactly why catalog data disappears after an application update.
+# 34. Required Root-Cause Investigation
+
+Before modifying the production data model, reproduce the reported behavior in a controlled environment if possible.
+
+The investigation must distinguish between at least these scenarios:
+
+### Scenario A — Database itself is destroyed
+
+Example:
+
+```text
+Bot update
+    ↓
+PostgreSQL recreated
+    ↓
+Database recreated
+    ↓
+Catalog disappears
+
+Scenario B — PostgreSQL survives but application connects to a different database
+
+Example:
+
+Existing PostgreSQL
+    ↓
+Bot update
+    ↓
+DATABASE_URL changes
+    ↓
+Application connects to another database
+    ↓
+Catalog appears empty
+Scenario C — Application startup modifies/deletes data
+
+Example:
+
+Bot update
+    ↓
+Application starts
+    ↓
+Initialization / seed logic runs
+    ↓
+Existing catalog is overwritten/deleted
+Scenario D — Migration destroys or replaces catalog data
+
+Example:
+
+Bot update
+    ↓
+Alembic migration
+    ↓
+Destructive schema/data operation
+    ↓
+Catalog disappears
+Scenario E — Docker volume is not persistent
+
+Example:
+
+Bot update
+    ↓
+PostgreSQL container replaced
+    ↓
+Old container filesystem removed
+    ↓
+Database disappears
+Scenario F — Catalog exists but application cannot read it
+
+Example:
+
+Database contains products
+    ↓
+Bot update
+    ↓
+Schema/query/model mismatch
+    ↓
+Catalog appears empty to users
+
+The developer must determine which scenario actually occurs rather than applying a generic persistence workaround.
+
+# 35. Update / Deployment Persistence Requirements
+
+Updating the bot must NEVER cause existing production data to disappear.
+
+The following operation must preserve all persistent data:
+
+- application restart;
+- bot process restart;
+- Docker container restart;
+- Docker Compose restart;
+- Docker Compose container recreation;
+- Docker image rebuild;
+- application image replacement;
+- normal application redeployment;
+- non-destructive Alembic migration.
+
+Existing data must remain intact:
+
+- users;
+- languages;
+- selected cities;
+- categories;
+- subcategories;
+- products;
+- carts;
+- orders;
+- order history.
+
+Updating application code must be independent from the lifecycle of persistent PostgreSQL storage.
+
+Production deployment must NOT remove the PostgreSQL volume.
+
+The documented deployment procedure must explicitly distinguish:
+
+Application containers
+from
+Persistent database storage.
+
+# 36. Safe Deployment Requirements
+
+The production deployment process must follow a safe update model.
+
+Conceptually:
+
+```text
+Existing PostgreSQL
+        ↓
+Persistent volume
+        ↓
+New application image
+        ↓
+Database migration
+        ↓
+Application restart
+        ↓
+Existing data remains available
+
+The deployment process must NOT perform operations equivalent to:
+
+docker compose down -v
+
+or any other operation that removes the PostgreSQL volume, unless explicitly intended for a complete destructive environment reset.
+
+Production deployment must not:
+
+remove database volumes;
+recreate the database unnecessarily;
+run destructive initialization;
+reset tables;
+delete catalog data;
+automatically seed production data;
+overwrite existing products.
+
+If migrations are required, they must be executed explicitly and safely.
+
+The deployment documentation must clearly distinguish:
+
+Safe operations
+
+Operations that preserve production data.
+
+Destructive operations
+
+Operations that can delete production data and must NEVER be used during normal production updates.
+
+# 37. Persistence and Deployment Acceptance Test
+
+The implementation is not considered complete until the following scenario passes.
+
+Initial state:
+
+Create realistic production-like data:
+
+- users;
+- categories;
+- subcategories;
+- products;
+- carts;
+- orders.
+
+Then perform an application update using the documented production deployment procedure.
+
+After the update verify:
+
+- users still exist;
+- categories still exist;
+- subcategories still exist;
+- products still exist;
+- carts still exist;
+- orders still exist;
+- order statuses still exist;
+- historical order totals still exist.
+
+Repeat the test after:
+
+1. Application restart
+2. Docker container restart
+3. Docker Compose recreation
+4. Docker image rebuild
+5. Application image replacement
+6. Alembic migration
+
+At no point may the catalog disappear.
+
+If the catalog disappears, the deployment is considered FAILED.
+
+The developer must identify the exact root cause before declaring the issue resolved.
+
+38. Broadcast System
+
+Administrators can send broadcasts to registered users.
+
+Supported formats:
+
+text;
+text + photo.
+
+Workflow:
+
+Compose
+    ↓
+Preview
+    ↓
+Confirm
+    ↓
+Broadcast
+
+The system must:
+
+respect Telegram rate limits;
+continue if individual users blocked the bot;
+record failures;
+display progress;
+display final statistics.
+
+Example:
+
+Sent: 1254
+Failed: 27
+
+Broadcast functionality must only work in private admin chats.
+
+39. Security
+
+The application must:
+
+restrict admin access by Telegram ID;
+restrict admin interactions to private chats;
+validate every callback;
+validate FSM state transitions;
+prevent unauthorized order manipulation;
+prevent duplicate order creation;
+store secrets only in environment variables;
+use SQLAlchemy ORM / parameterized queries;
+validate user input;
+prevent privilege escalation;
+avoid leaking internal database information.
+40. Environment Configuration
+
+The following variables should be supported:
+
+BOT_TOKEN
+
+
+DATABASE_URL
+
+
+ADMIN_IDS
+
+
+MANAGER_CHAT_ID
+
+
+REVIEW_GROUP_CHAT_ID
+
+
+APP_TIMEZONE
+
+Optional future configuration may include:
+
+LOG_LEVEL
+DATABASE_POOL_SIZE
+DATABASE_MAX_OVERFLOW
+41. Telegram Chat Type Rules
+
+Every handler must explicitly respect Telegram chat type.
+
+User-facing and admin-facing interactive functionality is allowed only in:
+
+private
+
+Manager notification delivery may target:
+
+group
+supergroup
+private
+
+depending on configuration.
+
+The bot must never initiate interactive workflows inside the manager group.
+
+42. Error Handling
+
+The application must gracefully handle:
+
+Telegram API errors;
+network errors;
+database errors;
+invalid callback data;
+invalid FSM input;
+missing products;
+deleted categories;
+deleted messages;
+unavailable users;
+expired or invalid invite links;
+failed notifications;
+failed broadcasts.
+
+Users must never receive Python stack traces or internal error details.
+
+All unexpected exceptions must be logged.
+
+43. Logging
+
+Important events should be logged:
+
+bot startup/shutdown;
+database connection;
+order creation;
+order status changes;
+admin actions;
+broadcast start/end;
+broadcast failures;
+unexpected exceptions;
+database errors.
+
+Do not log sensitive information unnecessarily.
+
+44. Performance
+
+The bot should:
+
+respond quickly under normal load;
+use asynchronous I/O;
+avoid blocking operations;
+minimize unnecessary database queries;
+use appropriate indexes;
+avoid N+1 queries;
+use database aggregation for statistics rather than loading the entire dataset into Python.
+
+Statistics queries should be efficient and use SQL aggregation.
+
+45. Database Indexes
+
+Add appropriate indexes for frequently queried fields, including where relevant:
+
+User.telegram_id
+User.language
+Product.subcategory_id
+Product.is_active
+Category.is_active
+Subcategory.category_id
+Order.user_id
+Order.status
+Order.created_at
+OrderItem.order_id
+OrderItem.product_id
+
+Exact indexing strategy should be reviewed based on actual query patterns.
+
+46. Architecture
+
+The application should follow a layered structure:
+
+Telegram Handlers
+        ↓
+Services / Business Logic
+        ↓
+Repositories
+        ↓
+SQLAlchemy
+        ↓
+PostgreSQL
+
+Handlers must not contain complex business logic.
+
+Handlers should:
+
+receive Telegram updates;
+validate basic input;
+call services;
+render responses.
+
+Services should contain business logic.
+
+Repositories should contain database access.
+
+47. Recommended Project Structure
+
+app/
+
+    handlers/
+
+        user/
+            start.py
+            catalog.py
+            cart.py
+            checkout.py
+            information.py
+            reviews.py
+
+        admin/
+            menu.py
+            products.py
+            categories.py
+            orders.py
+            statistics.py
+            broadcast.py
+
+    keyboards/
+
+        user/
+        admin/
+
+    middlewares/
+
+        database.py
+        localization.py
+        private_chat.py
+        error_handler.py
+
+    filters/
+
+    services/
+
+        user_service.py
+        catalog_service.py
+        cart_service.py
+        order_service.py
+        statistics_service.py
+        broadcast_service.py
+        localization_service.py
+        review_service.py
+
+    repositories/
+
+        user.py
+        category.py
+        subcategory.py
+        product.py
+        cart.py
+        order.py
+
+    models/
+
+    states/
+
+    locales/
+
+        ru.json
+        en.json
+        de.json
+        uk.json
+
+    database/
+
+    utils/
+
+    config.py
+    bot.py
+
+main.py
+
+48. Testing Requirements
+
+Automated tests should cover at minimum:
+
+User
+registration;
+language selection;
+language change;
+city selection;
+city change.
+Catalog
+category navigation;
+subcategory navigation;
+product navigation;
+Back navigation;
+inactive products;
+empty categories.
+Cart
+adding;
+increasing quantity;
+decreasing quantity;
+removing;
+total calculation;
+persistence.
+Checkout
+FSM transitions;
+delivery methods;
+payment method selection;
+confirmation;
+cancellation;
+duplicate confirmation prevention.
+Orders
+creation;
+status transitions;
+manager notification;
+customer status notification.
+Statistics
+total users;
+category count;
+subcategory count;
+product count;
+order count;
+current month;
+previous month;
+completed orders;
+cancelled orders;
+revenue;
+top products;
+least ordered products.
+Security
+unauthorized admin;
+admin commands in groups;
+callback validation;
+private-chat restrictions.
+Persistence
+restart persistence;
+migration persistence;
+Docker persistence.
+49. Definition of Done
+
+The update is considered complete only when:
+
+Ukrainian localization is fully implemented;
+users can switch between four languages;
+the new category → subcategory → product navigation works;
+product cards support Add to Cart, Back and Open Cart;
+- catalog data survives bot/application updates;
+- catalog data survives application restart;
+- catalog data survives Docker container replacement;
+- catalog data survives Docker Compose recreation;
+- catalog data survives application image rebuild;
+- catalog data survives normal production redeployment;
+- catalog data survives non-destructive Alembic migrations;
+- the root cause of catalog disappearance after bot updates has been identified;
+- the deployment process has been tested against the actual failure scenario;
+- production deployment does not remove persistent PostgreSQL storage.
+the root cause of the previous data-loss issue is identified and documented;
+PostgreSQL uses persistent storage;
+database backups are documented;
+the admin panel contains Statistics;
+statistics show users, categories, subcategories and products;
+statistics show total/current/previous month orders;
+statistics show completed/cancelled orders for those periods;
+statistics show all-time/current/previous month completed revenue;
+statistics show Top 3 most frequently ordered products;
+statistics show Top 3 least frequently ordered products;
+users can access the Reviews group through an invite link;
+the Information section no longer advertises PayPal;
+bank/card transfer is displayed as "by request";
+Contacts displays the temporary "Under development" message;
+the Reviews group is suggested for questions;
+checkout includes preferred payment method;
+payment method is saved with the order;
+administrators can mark active orders as Shipped;
+customers receive notifications when orders become Accepted;
+customers receive notifications when orders become Shipped;
+customers receive notifications when orders become Completed;
+customers receive notifications when orders become Cancelled;
+the bot ignores commands and interactions in group chats;
+the bot never sends interactive keyboards into the manager group;
+all admin functionality works only in private administrator chats;
+all user-facing functionality works only in private chats;
+all new functionality is covered by appropriate tests;
+no existing functionality is broken;
+the application remains asynchronous and production-ready.
+50. Backward Compatibility
+
+This update must preserve all existing user data.
+
+Existing:
+
+users;
+products;
+categories;
+carts;
+orders;
+order history
+
+must not be lost during migration.
+
+Where database schema changes are required, create proper Alembic migrations.
+
+Do not recreate the database.
+
+Do not delete existing production data.
+
+If existing products currently use the old category structure, provide a safe migration strategy to map existing data into:
+
+Category
+    ↓
+Subcategory
+    ↓
+Product
+
+The migration must be reversible where technically practical.
+
+51. Critical Priority Items
+
+The following items are considered high priority:
+
+### P0 — Catalog Data Loss During Bot Updates
+
+Investigate and resolve the reported issue where the catalog disappears after updating/redeploying the bot.
+
+The exact root cause must be identified.
+
+A generic persistence workaround is not sufficient.
+
+The final deployment procedure must demonstrably preserve all production data across application updates.
+
+P0 — Group Isolation
+
+Prevent the bot from responding to commands or interactions in manager groups.
+
+P1 — Order Lifecycle
+
+Implement:
+
+New
+→ Accepted
+→ Shipped
+→ Completed / Cancelled
+
+with customer notifications.
+
+P1 — Catalog Hierarchy
+
+Implement:
+
+Category
+→ Subcategory / Brand
+→ Product
+P1 — Statistics
+
+Implement the complete administrator statistics dashboard.
+
+P1 — Ukrainian Localization
+
+Add complete uk localization.
+
+P2 — Reviews
+
+Add review group access through an invite link.
+
+P2 — Information / Payment Updates
+
+Update payment and contact information.
+
+52. Non-Goals for This Version
+
+The following features are explicitly outside the scope of this update unless separately requested:
+
+PayPal integration;
+online payment processing;
+automatic payment verification;
+inventory/stock management;
+promo codes;
+loyalty system;
+product reviews inside the bot;
+web administration panel;
+advanced analytics dashboard;
+CRM integration.
+
+The architecture should nevertheless remain extensible enough to support these features in the future.

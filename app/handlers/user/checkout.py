@@ -42,7 +42,7 @@ from app.states.checkout import CheckoutStates
 from app.utils.concurrency import keyed_lock
 from app.utils.html import e
 from app.utils.labels import city_label, delivery_label, payment_label
-from app.utils.telegram_ui import clear_inline_markup
+from app.utils.telegram_ui import as_message, clear_inline_markup
 from app.utils.validators import nonempty, normalize_phone
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,8 @@ async def checkout_from_cart(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -173,9 +174,9 @@ async def checkout_from_cart(
         return
 
     await callback.answer()
-    await clear_inline_markup(callback.message)
+    await clear_inline_markup(message)
     await start_checkout(
-        message=callback.message,
+        message=message,
         state=state,
         session=session,
         user=user,
@@ -199,15 +200,16 @@ async def checkout_cancel(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
     user = await UserService(session).ensure_user(callback.from_user)
     localized = LocalizationService.from_user(user)
     await callback.answer()
-    await clear_inline_markup(callback.message)
-    await _abort_checkout(message=callback.message, state=state, i18n=localized)
+    await clear_inline_markup(message)
+    await _abort_checkout(message=message, state=state, i18n=localized)
 
 
 @router.message(StateFilter(CheckoutStates.customer_name), F.text)
@@ -262,7 +264,8 @@ async def checkout_delivery(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.data is None or callback.message is None or callback.from_user is None:
+    message = as_message(callback)
+    if callback.data is None or message is None or callback.from_user is None:
         await callback.answer()
         return
 
@@ -283,8 +286,8 @@ async def checkout_delivery(
     await state.update_data(delivery_type=delivery.value)
     await state.set_state(CheckoutStates.address)
     await callback.answer()
-    await clear_inline_markup(callback.message)
-    await callback.message.answer(
+    await clear_inline_markup(message)
+    await message.answer(
         localized.t("checkout.ask_address"),
         reply_markup=checkout_cancel_keyboard(localized),
     )
@@ -447,13 +450,14 @@ async def checkout_payment(
         await callback.answer(i18n.t("error.invalid_callback"), show_alert=True)
         return
 
+    # Resolved from callback.from_user — the customer who tapped — and passed
+    # down, because `message` here is the bot's own message.
     user = await UserService(session).ensure_user(callback.from_user)
-    localized = LocalizationService.from_user(user)
 
     await state.update_data(payment_method=payment.value)
     await callback.answer()
     await clear_inline_markup(message)
-    await _show_confirmation(message, state, session, localized)
+    await _show_confirmation(message, state, session, user)
 
 
 @router.message(StateFilter(CheckoutStates.payment_method))
@@ -499,12 +503,17 @@ async def _show_confirmation(
     message: Message,
     state: FSMContext,
     session: AsyncSession,
-    i18n: LocalizationService,
+    user: User,
 ) -> None:
-    if message.from_user is None:
-        return
+    """
+    Render the order summary for ``user``.
 
-    user = await UserService(session).ensure_user(message.from_user)
+    The customer is passed in rather than read from ``message.from_user``: the
+    only caller reaches here from a callback query and hands us
+    ``callback.message`` — a message the *bot* sent, whose ``from_user`` is the
+    bot. Resolving the user from it loaded the bot's (empty) cart and told the
+    customer their cart was empty at the last step of checkout.
+    """
     localized = LocalizationService.from_user(user)
     data = await state.get_data()
     view = await CartService(session).get_view(user.id, language=localized.language)
@@ -536,7 +545,8 @@ async def checkout_confirm(
     settings: Settings,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -562,9 +572,9 @@ async def checkout_confirm(
         )
         if any(not data.get(key) for key in required):
             await state.clear()
-            await clear_inline_markup(callback.message)
+            await clear_inline_markup(message)
             await callback.answer(localized.t("error.generic"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("error.generic"),
                 reply_markup=main_menu_keyboard(localized),
             )
@@ -575,9 +585,9 @@ async def checkout_confirm(
             payment = PaymentMethod(str(data["payment_method"]))
         except ValueError:
             await state.clear()
-            await clear_inline_markup(callback.message)
+            await clear_inline_markup(message)
             await callback.answer(localized.t("error.invalid_callback"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("error.generic"),
                 reply_markup=main_menu_keyboard(localized),
             )
@@ -589,8 +599,8 @@ async def checkout_confirm(
             if phone is None:
                 await callback.answer(localized.t("checkout.invalid_phone"), show_alert=True)
                 await state.set_state(CheckoutStates.contact)
-                await clear_inline_markup(callback.message)
-                await callback.message.answer(
+                await clear_inline_markup(message)
+                await message.answer(
                     localized.t("checkout.ask_contact"),
                     reply_markup=contact_keyboard(localized),
                 )
@@ -610,27 +620,27 @@ async def checkout_confirm(
             )
         except EmptyCartError:
             await state.clear()
-            await clear_inline_markup(callback.message)
+            await clear_inline_markup(message)
             await callback.answer(localized.t("checkout.empty_cart"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("checkout.empty_cart"),
                 reply_markup=main_menu_keyboard(localized),
             )
             return
         except InactiveProductError:
             await state.clear()
-            await clear_inline_markup(callback.message)
+            await clear_inline_markup(message)
             await callback.answer(localized.t("checkout.inactive_product"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("checkout.inactive_product"),
                 reply_markup=main_menu_keyboard(localized),
             )
             return
         except InvalidDeliveryError:
             await state.clear()
-            await clear_inline_markup(callback.message)
+            await clear_inline_markup(message)
             await callback.answer(localized.t("checkout.invalid_delivery"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("checkout.invalid_delivery"),
                 reply_markup=main_menu_keyboard(localized),
             )
@@ -640,7 +650,7 @@ async def checkout_confirm(
             await session.rollback()
             logger.exception("Failed to place order for user_id=%s", user.id)
             await callback.answer(localized.t("error.generic"), show_alert=True)
-            await callback.message.answer(
+            await message.answer(
                 localized.t("error.generic"),
                 reply_markup=main_menu_keyboard(localized),
             )
@@ -653,8 +663,8 @@ async def checkout_confirm(
         return
 
     await callback.answer()
-    await clear_inline_markup(callback.message)
-    await callback.message.answer(
+    await clear_inline_markup(message)
+    await message.answer(
         localized.t("checkout.success", order_id=order.id),
         reply_markup=main_menu_keyboard(localized),
     )

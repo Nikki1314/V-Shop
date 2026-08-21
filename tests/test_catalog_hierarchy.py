@@ -203,14 +203,10 @@ async def test_full_hierarchy_traversal(session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_model_defaults_are_active(session: AsyncSession) -> None:
-    category = Category(
-        name="X", name_ru="X", name_en="X", name_de="X", name_uk="X"
-    )
+    category = Category(name="X", name_ru="X", name_en="X", name_de="X", name_uk="X")
     session.add(category)
     await session.flush()
-    sub = Subcategory(
-        category_id=category.id, name_ru="Y", name_en="Y", name_de="Y", name_uk="Y"
-    )
+    sub = Subcategory(category_id=category.id, name_ru="Y", name_en="Y", name_de="Y", name_uk="Y")
     session.add(sub)
     await session.flush()
 

@@ -67,8 +67,13 @@ async def _order(
     await CartService(session).add_product(user.id, product, quantity=1)
     await session.flush()
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="X",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CASH,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="X",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CASH,
     )
     await session.flush()
     return order, user
@@ -117,9 +122,7 @@ async def test_notification_names_the_order_and_status(
     call = bot.sent[0]
     assert call["chat_id"] == user.telegram_id
     assert f"#{order.id}" in call["text"]
-    expected = LocalizationService.from_user(user).t(
-        STATUS_MESSAGE_KEYS[status], order_id=order.id
-    )
+    expected = LocalizationService.from_user(user).t(STATUS_MESSAGE_KEYS[status], order_id=order.id)
     assert call["text"] == expected
     assert "{" not in call["text"]
 
@@ -129,9 +132,7 @@ async def test_notification_names_the_order_and_status(
 async def test_notification_uses_the_persisted_language(
     session: AsyncSession, language: str
 ) -> None:
-    order, user = await _order(
-        session, 12_200 + LANGS.index(language), LanguageCode(language)
-    )
+    order, user = await _order(session, 12_200 + LANGS.index(language), LanguageCode(language))
     await OrderRepository(session).update_status(order, OrderStatus.SHIPPED)
     await session.flush()
 
@@ -151,9 +152,7 @@ async def test_notification_uses_the_persisted_language(
 
 def test_every_status_message_is_translated_in_all_four_languages() -> None:
     for key in STATUS_MESSAGE_KEYS.values():
-        rendered = {
-            LocalizationService.from_code(c).t(key, order_id=7) for c in LANGS
-        }
+        rendered = {LocalizationService.from_code(c).t(key, order_id=7) for c in LANGS}
         assert len(rendered) == len(LANGS), key
         for text in rendered:
             assert "#7" in text
@@ -187,18 +186,14 @@ async def test_user_without_a_language_falls_back(session: AsyncSession) -> None
     ],
 )
 @pytest.mark.asyncio
-async def test_delivery_failures_never_raise(
-    session: AsyncSession, error: Exception
-) -> None:
+async def test_delivery_failures_never_raise(session: AsyncSession, error: Exception) -> None:
     """Any failure must be swallowed: the status change is already committed."""
     order, user = await _order(session, 12_400)
     await OrderRepository(session).update_status(order, OrderStatus.SHIPPED)
     await session.flush()
 
     bot = FakeBot(error=error)
-    delivered = await CustomerOrderNotificationService(bot).notify_status_change(
-        order, user
-    )
+    delivered = await CustomerOrderNotificationService(bot).notify_status_change(order, user)
 
     assert delivered is False
 
@@ -252,9 +247,7 @@ async def test_status_survives_a_failed_notification(
     bot = FakeBot(
         error=TelegramForbiddenError(method=None, message="blocked")  # type: ignore[arg-type]
     )
-    delivered = await CustomerOrderNotificationService(bot).notify_status_change(
-        order, user
-    )
+    delivered = await CustomerOrderNotificationService(bot).notify_status_change(order, user)
     assert delivered is False
 
     session.expunge_all()

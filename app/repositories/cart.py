@@ -18,9 +18,7 @@ class CartRepository(BaseRepository[Cart]):
         super().__init__(session)
 
     async def get_by_user_id(self, user_id: int) -> Cart | None:
-        result = await self.session.scalars(
-            select(Cart).where(Cart.user_id == user_id)
-        )
+        result = await self.session.scalars(select(Cart).where(Cart.user_id == user_id))
         return result.first()
 
     async def get_by_user_id_with_items(
@@ -69,9 +67,7 @@ class CartRepository(BaseRepository[Cart]):
 
     async def clear(self, cart: Cart) -> Cart:
         """Remove all items from the cart."""
-        await self.session.execute(
-            delete(CartItem).where(CartItem.cart_id == cart.id)
-        )
+        await self.session.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
         await self.session.flush()
         await self.session.refresh(cart, attribute_names=["items"])
         return cart

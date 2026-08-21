@@ -25,9 +25,7 @@ from app.utils.validators import parse_positive_int
 from tests.factories import make_user
 
 LANGS = ("ru", "en", "de", "uk")
-BASE = dict(
-    flavor="Tropic", volume="60ml", nicotine_strength="6mg", price=Decimal("18.00")
-)
+BASE = dict(flavor="Tropic", volume="60ml", nicotine_strength="6mg", price=Decimal("18.00"))
 
 
 @pytest.fixture(autouse=True)
@@ -38,18 +36,32 @@ def _clear_cache() -> None:
 async def _shop(session: AsyncSession):  # type: ignore[no-untyped-def]
     admin = AdminService(session)
     category = await admin.create_category(
-        "Liquids", name_ru="Жидкости", name_en="Liquids",
-        name_de="Liquids DE", name_uk="Рідини",
+        "Liquids",
+        name_ru="Жидкости",
+        name_en="Liquids",
+        name_de="Liquids DE",
+        name_uk="Рідини",
     )
     brand = await admin.create_subcategory(
-        category_id=category.id, name="Brand A",
-        name_ru="Бренд А", name_en="Brand A", name_de="Marke A", name_uk="Бренд А",
+        category_id=category.id,
+        name="Brand A",
+        name_ru="Бренд А",
+        name_en="Brand A",
+        name_de="Marke A",
+        name_uk="Бренд А",
     )
     await session.flush()
     product = await admin.create_product(
-        category_id=category.id, subcategory_id=brand.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango DE", name_uk="Манго UA",
-        description_ru="о", description_en="d", description_de="b", description_uk="о",
+        category_id=category.id,
+        subcategory_id=brand.id,
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango DE",
+        name_uk="Манго UA",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
+        description_uk="о",
         **BASE,
     )
     await session.flush()
@@ -65,14 +77,14 @@ def _payloads(markup) -> list[str]:  # type: ignore[no-untyped-def]
 
 @pytest.mark.parametrize("language", LANGS)
 @pytest.mark.asyncio
-async def test_full_flow_in_each_language(
-    session: AsyncSession, language: str
-) -> None:
+async def test_full_flow_in_each_language(session: AsyncSession, language: str) -> None:
     """Language → Catalog → Category → Brand → Product → Cart → Back."""
     _admin, category, brand, product = await _shop(session)
     user = await make_user(
-        session, telegram_id=8000 + LANGS.index(language),
-        language=LanguageCode(language), city=CityChoice.BERLIN,
+        session,
+        telegram_id=8000 + LANGS.index(language),
+        language=LanguageCode(language),
+        city=CityChoice.BERLIN,
     )
     await session.flush()
 
@@ -123,9 +135,7 @@ async def test_brand_with_no_products(session: AsyncSession) -> None:
     brand = await admin.create_subcategory(category_id=category.id, name="Empty")
     await session.flush()
 
-    opened, products = await CatalogService(session).get_subcategory_with_products(
-        brand.id
-    )
+    opened, products = await CatalogService(session).get_subcategory_with_products(brand.id)
     assert opened is not None
     assert products == []
 
@@ -306,9 +316,9 @@ async def test_repeated_navigation_is_idempotent(session: AsyncSession) -> None:
     first = [s.id for s in await catalog.list_subcategories(category.id)]
     for _ in range(5):
         assert [s.id for s in await catalog.list_subcategories(category.id)] == first
-        assert [
+        assert [p.id for p in await catalog.list_subcategory_products(brand.id)] == [
             p.id for p in await catalog.list_subcategory_products(brand.id)
-        ] == [p.id for p in await catalog.list_subcategory_products(brand.id)]
+        ]
 
 
 # ============================================================ back targets
@@ -331,9 +341,7 @@ async def test_back_targets_at_every_level(session: AsyncSession) -> None:
     assert resumed is not None
     products_back = f"{CALLBACK_CATEGORY_PREFIX}{resumed.category_id}"
     assert (
-        await catalog.get_category(
-            int(products_back.removeprefix(CALLBACK_CATEGORY_PREFIX))
-        )
+        await catalog.get_category(int(products_back.removeprefix(CALLBACK_CATEGORY_PREFIX)))
     ) is not None
     assert category.id == resumed.category_id
     assert CALLBACK_CATALOG_OPEN == "catalog:open"
@@ -437,8 +445,12 @@ async def test_legacy_product_without_a_brand_still_checks_out(
     await session.flush()
     legacy = await admin.create_product(
         category_id=category.id,
-        name_ru="Старый", name_en="Legacy", name_de="Legacy DE",
-        description_ru="о", description_en="d", description_de="b",
+        name_ru="Старый",
+        name_en="Legacy",
+        name_de="Legacy DE",
+        description_ru="о",
+        description_en="d",
+        description_de="b",
         **BASE,
     )
     user = await make_user(

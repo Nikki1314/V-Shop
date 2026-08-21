@@ -70,8 +70,13 @@ async def _order_at(
     await CartService(session).add_product(user.id, product, quantity=1)
     await session.flush()
     order = await OrderService(session).place_order_from_cart(
-        user, customer_name="QA", delivery_type="pickup", address="X",
-        preferred_time="18:00", phone=None, payment_method=PaymentMethod.CASH,
+        user,
+        customer_name="QA",
+        delivery_type="pickup",
+        address="X",
+        preferred_time="18:00",
+        phone=None,
+        payment_method=PaymentMethod.CASH,
     )
     if status is not OrderStatus.NEW:
         await OrderRepository(session).update_status(order, status)
@@ -150,9 +155,7 @@ async def test_each_transition_has_wording_of_its_own(
 ) -> None:
     """A customer must be able to tell the statuses apart."""
     texts = {
-        LocalizationService.from_code(lang).t(
-            STATUS_MESSAGE_KEYS[target], order_id=1
-        )
+        LocalizationService.from_code(lang).t(STATUS_MESSAGE_KEYS[target], order_id=1)
         for lang in LANGS
     }
     assert len(texts) == len(LANGS)
@@ -162,9 +165,7 @@ async def test_each_transition_has_wording_of_its_own(
         for status, key in STATUS_MESSAGE_KEYS.items()
         if status is not target
     }
-    mine = LocalizationService.from_code("en").t(
-        STATUS_MESSAGE_KEYS[target], order_id=1
-    )
+    mine = LocalizationService.from_code("en").t(STATUS_MESSAGE_KEYS[target], order_id=1)
     assert mine not in others
 
 
@@ -223,9 +224,7 @@ async def test_walking_the_pipeline_notifies_once_per_step(
         assert await apply_status_change(session, bot, order, user, target) is False
 
     expected = [
-        LocalizationService.from_code("uk").t(
-            STATUS_MESSAGE_KEYS[target], order_id=order.id
-        )
+        LocalizationService.from_code("uk").t(STATUS_MESSAGE_KEYS[target], order_id=order.id)
         for target in steps
     ]
     assert [call["text"] for call in bot.sent] == expected
@@ -265,15 +264,11 @@ async def test_delivery_failure_leaves_the_status_applied(
     ],
 )
 @pytest.mark.asyncio
-async def test_every_failure_mode_keeps_the_change(
-    session: AsyncSession, error: Exception
-) -> None:
+async def test_every_failure_mode_keeps_the_change(session: AsyncSession, error: Exception) -> None:
     order, user = await _order_at(session, 13_500, OrderStatus.ACCEPTED, LanguageCode.EN)
     bot = FakeBot(error=error)
 
-    delivered = await apply_status_change(
-        session, bot, order, user, OrderStatus.SHIPPED
-    )
+    delivered = await apply_status_change(session, bot, order, user, OrderStatus.SHIPPED)
 
     assert delivered is False
     session.expunge_all()
@@ -286,24 +281,23 @@ async def test_a_blocked_customer_does_not_stop_the_next_order(
     session: AsyncSession,
 ) -> None:
     """One unreachable customer must not break processing for everyone else."""
-    blocked_order, blocked_user = await _order_at(
-        session, 13_600, OrderStatus.NEW, LanguageCode.EN
-    )
-    ok_order, ok_user = await _order_at(
-        session, 13_601, OrderStatus.NEW, LanguageCode.RU
-    )
+    blocked_order, blocked_user = await _order_at(session, 13_600, OrderStatus.NEW, LanguageCode.EN)
+    ok_order, ok_user = await _order_at(session, 13_601, OrderStatus.NEW, LanguageCode.RU)
 
     failing = FakeBot(
         error=TelegramForbiddenError(method=None, message="blocked")  # type: ignore[arg-type]
     )
     working = FakeBot()
 
-    assert await apply_status_change(
-        session, failing, blocked_order, blocked_user, OrderStatus.ACCEPTED
-    ) is False
-    assert await apply_status_change(
-        session, working, ok_order, ok_user, OrderStatus.ACCEPTED
-    ) is True
+    assert (
+        await apply_status_change(
+            session, failing, blocked_order, blocked_user, OrderStatus.ACCEPTED
+        )
+        is False
+    )
+    assert (
+        await apply_status_change(session, working, ok_order, ok_user, OrderStatus.ACCEPTED) is True
+    )
 
     assert blocked_order.status is OrderStatus.ACCEPTED
     assert ok_order.status is OrderStatus.ACCEPTED

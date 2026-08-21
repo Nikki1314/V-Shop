@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.models.category import Category, Subcategory
 from app.services.localization import LocalizationService
+from app.utils.product_display import localized_category_name
 from app.utils.telegram_ui import truncate_button_label
 
 # Namespaced short callbacks — Telegram caps callback data at 64 bytes.
@@ -21,7 +22,6 @@ CALLBACK_SUB_DELETE_PREFIX = "admin:sub:del:"
 CALLBACK_SUB_DELETE_OK_PREFIX = "admin:sub:delok:"
 CALLBACK_SUB_ASSIGN_PREFIX = "admin:sub:asg:"  # pick destination category
 CALLBACK_SUB_ASSIGN_TO_PREFIX = "admin:sub:asgto:"  # admin:sub:asgto:{id}:{cat}
-CALLBACK_SUB_CANCEL = "admin:sub:cancel"
 
 # Locale keys for the four supported languages, in display order.
 LANGUAGE_KEYS: tuple[tuple[str, str], ...] = (
@@ -38,7 +38,8 @@ def _label(subcategory: Subcategory, i18n: LocalizationService) -> str:
         if subcategory.is_active
         else i18n.t("admin.subcategory_status_inactive")
     )
-    return truncate_button_label(f"{status} {subcategory.name_ru}")
+    name = localized_category_name(subcategory, i18n.language)
+    return truncate_button_label(f"{status} {name}")
 
 
 def subcategories_list_keyboard(
@@ -93,9 +94,7 @@ def subcategory_manage_keyboard(
     ]
 
     toggle_key = (
-        "admin.subcategory_deactivate"
-        if subcategory.is_active
-        else "admin.subcategory_activate"
+        "admin.subcategory_deactivate" if subcategory.is_active else "admin.subcategory_activate"
     )
     rows.append(
         [
@@ -185,10 +184,8 @@ def subcategory_assign_keyboard(
     rows = [
         [
             InlineKeyboardButton(
-                text=truncate_button_label(category.name_ru),
-                callback_data=(
-                    f"{CALLBACK_SUB_ASSIGN_TO_PREFIX}{subcategory.id}:{category.id}"
-                ),
+                text=truncate_button_label(localized_category_name(category, i18n.language)),
+                callback_data=(f"{CALLBACK_SUB_ASSIGN_TO_PREFIX}{subcategory.id}:{category.id}"),
             )
         ]
         for category in categories

@@ -104,7 +104,4 @@ class Subcategory(Base, TimestampMixin, UpdatedAtMixin):
     products: Mapped[list[Product]] = relationship(back_populates="subcategory")
 
     def __repr__(self) -> str:
-        return (
-            f"<Subcategory id={self.id} category_id={self.category_id} "
-            f"name_en={self.name_en!r}>"
-        )
+        return f"<Subcategory id={self.id} category_id={self.category_id} name_en={self.name_en!r}>"

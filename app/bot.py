@@ -22,9 +22,7 @@ def _build_session(settings: Settings) -> AiohttpSession:
     """Create the HTTP session, honoring TELEGRAM_SSL_VERIFY."""
     session = AiohttpSession()
     if not settings.telegram_ssl_verify:
-        logger.warning(
-            "TELEGRAM_SSL_VERIFY=false — TLS certificate verification is disabled"
-        )
+        logger.warning("TELEGRAM_SSL_VERIFY=false — TLS certificate verification is disabled")
         session._connector_init["ssl"] = False
     return session
 

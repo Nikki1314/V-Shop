@@ -25,7 +25,7 @@ from app.services.broadcast import BroadcastResult, BroadcastService
 from app.services.localization import LocalizationService
 from app.states.admin import ADMIN_WIZARD_STATES, BroadcastStates
 from app.utils.confirm import confirm_once
-from app.utils.telegram_ui import clear_inline_markup
+from app.utils.telegram_ui import as_message, clear_inline_markup
 
 logger = logging.getLogger(__name__)
 
@@ -142,11 +142,12 @@ async def start_broadcast(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     await state.clear()
     await state.set_state(BroadcastStates.compose)
-    await callback.message.answer(
+    await message.answer(
         i18n.t("admin.broadcast_ask_content"),
         reply_markup=admin_cancel_keyboard(i18n),
     )
@@ -173,9 +174,10 @@ async def cancel_broadcast_callback(
     state: FSMContext,
 ) -> None:
     await callback.answer()
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
-    await _cancel_broadcast(callback.message, i18n, state)
+    await _cancel_broadcast(message, i18n, state)
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +192,8 @@ async def compose_photo(
     state: FSMContext,
     session: AsyncSession,
 ) -> None:
+    if not message.photo:
+        return
     photo = message.photo[-1]
     caption = (message.caption or "").strip() or None
     await state.update_data(photo_file_id=photo.file_id, text=caption)
@@ -250,7 +254,8 @@ async def confirm_broadcast(
     bot: Bot,
 ) -> None:
     await callback.answer()
-    if callback.message is None or callback.from_user is None:
+    message = as_message(callback)
+    if message is None or callback.from_user is None:
         return
 
     # Claim under lock only; fan-out must not hold the process lock.
@@ -266,7 +271,7 @@ async def confirm_broadcast(
         photo_file_id = data.get("photo_file_id")
         if not text and not photo_file_id:
             await state.clear()
-            await callback.message.answer(
+            await message.answer(
                 i18n.t("admin.broadcast_empty_body"),
                 reply_markup=admin_menu_keyboard(i18n),
             )
@@ -275,7 +280,7 @@ async def confirm_broadcast(
         recipients = await AdminService(session).list_broadcast_recipient_ids()
         if not recipients:
             await state.clear()
-            await callback.message.answer(
+            await message.answer(
                 i18n.t("admin.broadcast_no_recipients"),
                 reply_markup=admin_menu_keyboard(i18n),
             )
@@ -283,10 +288,10 @@ async def confirm_broadcast(
 
         # Release the DB transaction before the long Telegram fan-out.
         await session.commit()
-        await clear_inline_markup(callback.message)
+        await clear_inline_markup(message)
         await state.clear()
 
-    progress_message = await callback.message.answer(
+    progress_message = await message.answer(
         i18n.t(
             "admin.broadcast_progress",
             sent=0,
@@ -327,7 +332,7 @@ async def confirm_broadcast(
         total=result.total,
     )
     failed_block = _format_failed_users(i18n, result.failed)
-    await callback.message.answer(
+    await message.answer(
         f"{summary}\n\n{failed_block}",
         reply_markup=admin_menu_keyboard(i18n),
     )

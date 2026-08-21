@@ -79,11 +79,17 @@ async def test_visibility_definition_is_shared(session: AsyncSession) -> None:
         product = await admin.create_product(
             category_id=category.id,
             subcategory_id=subcategory_id,
-            name_ru=f"p{index}", name_en=f"p{index}",
-            name_de=f"p{index}", name_uk=f"p{index}",
-            description_ru="d", description_en="d",
-            description_de="d", description_uk="d",
-            flavor="f", volume="30ml", nicotine_strength="3mg",
+            name_ru=f"p{index}",
+            name_en=f"p{index}",
+            name_de=f"p{index}",
+            name_uk=f"p{index}",
+            description_ru="d",
+            description_en="d",
+            description_de="d",
+            description_uk="d",
+            flavor="f",
+            volume="30ml",
+            nicotine_strength="3mg",
             price=Decimal("10.00"),
             is_active=product_active,
         )
@@ -94,9 +100,7 @@ async def test_visibility_definition_is_shared(session: AsyncSession) -> None:
     all_ids = list(expected)
 
     # 1. the predicate itself
-    sellable = set(
-        (await session.scalars(only_sellable_products(select(Product.id)))).all()
-    )
+    sellable = set((await session.scalars(only_sellable_products(select(Product.id)))).all())
     for product_id, on_sale in expected.items():
         assert (product_id in sellable) is on_sale, (
             f"predicate disagrees for {described[product_id]}"
@@ -111,9 +115,7 @@ async def test_visibility_definition_is_shared(session: AsyncSession) -> None:
     # 3. the statistics ranking, over the same set
     ranked = {
         row.product_id
-        for row in await StatisticsRepository(session).least_ordered_products(
-            limit=len(MATRIX) * 2
-        )
+        for row in await StatisticsRepository(session).least_ordered_products(limit=len(MATRIX) * 2)
     }
     assert ranked == sellable, "the least-ordered list ranks a different set"
 
@@ -140,17 +142,22 @@ async def test_a_legacy_row_survives_the_brand_join(session: AsyncSession) -> No
     await session.flush()
     legacy = await admin.create_product(
         category_id=category.id,
-        name_ru="legacy", name_en="legacy", name_de="legacy", name_uk="legacy",
-        description_ru="d", description_en="d",
-        description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg",
+        name_ru="legacy",
+        name_en="legacy",
+        name_de="legacy",
+        name_uk="legacy",
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
         price=Decimal("10.00"),
     )
     await session.flush()
 
     assert legacy.subcategory_id is None
-    sellable = set(
-        (await session.scalars(only_sellable_products(select(Product.id)))).all()
-    )
+    sellable = set((await session.scalars(only_sellable_products(select(Product.id)))).all())
     assert legacy.id in sellable
     assert await ProductRepository(session).list_unsellable_ids([legacy.id]) == set()

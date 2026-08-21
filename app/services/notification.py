@@ -91,9 +91,7 @@ class OrderNotificationService:
             else:
                 name = f"Product #{item.product_id}"
             line_total = item.price * item.quantity
-            item_lines.append(
-                f"• {name} × <b>{item.quantity}</b> — <code>{line_total}</code>"
-            )
+            item_lines.append(f"• {name} × <b>{item.quantity}</b> — <code>{line_total}</code>")
         items_block = "\n".join(item_lines) if item_lines else "• —"
 
         return (

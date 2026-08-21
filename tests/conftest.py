@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from decimal import Decimal
 
-import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -14,14 +13,13 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+# Import models so metadata is complete.
+import app.models  # noqa: F401
 from app.database.base import Base
 from app.models.category import Category
 from app.models.enums import CityChoice, LanguageCode
 from app.models.product import Product
 from app.models.user import User
-
-# Import models so metadata is complete.
-import app.models  # noqa: F401
 
 # Shared seeded shop, used by the statistics service and dashboard suites.
 from tests.shop_dataset import shop, stats  # noqa: F401

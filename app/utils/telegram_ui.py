@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiogram.types import InlineKeyboardMarkup, Message, ReplyKeyboardMarkup
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardMarkup,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +24,34 @@ async def edit_or_answer(
     reply_markup: KeyboardMarkup = None,
     edit: bool = True,
 ) -> None:
-    """Prefer ``edit_text``; fall back to ``answer`` when edit is unavailable."""
-    if edit:
+    """
+    Prefer ``edit_text``; fall back to ``answer`` when edit is unavailable.
+
+    Only an *inline* keyboard can be attached to an edit — a reply keyboard
+    belongs to the chat, not the message, and Telegram rejects it here. Callers
+    passing one fall straight through to ``answer``, which accepts both, rather
+    than editing and losing the keyboard.
+    """
+    if edit and not isinstance(reply_markup, ReplyKeyboardMarkup):
         try:
             await message.edit_text(text, reply_markup=reply_markup)
             return
         except Exception:
             logger.debug("Could not edit message; answering instead", exc_info=True)
     await message.answer(text, reply_markup=reply_markup)
+
+
+def as_message(callback: CallbackQuery) -> Message | None:
+    """
+    The message a callback came from, or ``None`` if it is no longer reachable.
+
+    Telegram reports ``InaccessibleMessage`` for a message the bot can no longer
+    read — too old, or deleted. Handlers must treat that as "nothing to update"
+    rather than assume a live ``Message``, and narrowing it here keeps four
+    copies of the same two lines out of the handler modules.
+    """
+    message = callback.message
+    return message if isinstance(message, Message) else None
 
 
 async def clear_inline_markup(message: Message) -> None:

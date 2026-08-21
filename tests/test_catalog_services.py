@@ -46,7 +46,9 @@ async def _tree(session: AsyncSession) -> tuple[Category, Subcategory, object]:
         category_id=category.id, name="Brand A"
     )
     product = await ProductRepository(session).create_product(
-        category_id=category.id, subcategory_id=sub.id, name_ru="Mango",
+        category_id=category.id,
+        subcategory_id=sub.id,
+        name_ru="Mango",
         **PRODUCT_DEFAULTS,
     )
     await session.flush()
@@ -220,7 +222,9 @@ async def test_inactive_product_hidden_but_siblings_remain(
 ) -> None:
     category, sub, product = await _tree(session)
     sibling = await ProductRepository(session).create_product(
-        category_id=category.id, subcategory_id=sub.id, name_ru="Berry",
+        category_id=category.id,
+        subcategory_id=sub.id,
+        name_ru="Berry",
         **PRODUCT_DEFAULTS,
     )
     await session.flush()
@@ -333,8 +337,13 @@ async def test_product_in_an_order_still_cannot_be_deleted(
     _, _, product = await _tree(session)
     user = await make_user(session, telegram_id=9100)
     await OrderRepository(session).create_order(
-        user_id=user.id, customer_name="A", city="berlin", delivery_type="pickup",
-        address="x", total_price=Decimal("10.00"), status=OrderStatus.NEW,
+        user_id=user.id,
+        customer_name="A",
+        city="berlin",
+        delivery_type="pickup",
+        address="x",
+        total_price=Decimal("10.00"),
+        status=OrderStatus.NEW,
         items=[{"product_id": product.id, "quantity": 1, "price": "10.00"}],
     )
     await session.flush()
@@ -356,7 +365,9 @@ async def test_category_counts_use_a_single_query(session: AsyncSession) -> None
         for brand in ("A", "B"):
             sub = await subs.create_subcategory(category_id=category.id, name=brand)
             await products.create_product(
-                category_id=category.id, subcategory_id=sub.id, name_ru=f"{name}{brand}",
+                category_id=category.id,
+                subcategory_id=sub.id,
+                name_ru=f"{name}{brand}",
                 **PRODUCT_DEFAULTS,
             )
     await session.flush()
@@ -386,9 +397,7 @@ async def test_category_counts_use_a_single_query(session: AsyncSession) -> None
 async def test_subcategory_counts_use_a_single_query(session: AsyncSession) -> None:
     admin = AdminCatalogService(session)
     category, sub, _ = await _tree(session)
-    await SubcategoryRepository(session).create_subcategory(
-        category_id=category.id, name="Empty"
-    )
+    await SubcategoryRepository(session).create_subcategory(category_id=category.id, name="Empty")
     await session.flush()
 
     statements: list[str] = []
@@ -471,8 +480,7 @@ async def test_admin_product_listing_preloads_both_parents(
     try:
         # touching the relationships must not emit further SQL
         rendered = [
-            (p.category.name_en, p.subcategory.name_en if p.subcategory else None)
-            for p in products
+            (p.category.name_en, p.subcategory.name_en if p.subcategory else None) for p in products
         ]
     finally:
         event.remove(engine, "before_cursor_execute", _record)

@@ -89,9 +89,7 @@ def _hint(i18n: LocalizationService, key: str) -> str:
     return i18n.t("admin.stats_hint", text=i18n.t(key))
 
 
-def _orders_line(
-    i18n: LocalizationService, period_key: str, counts: OrderCounts
-) -> str:
+def _orders_line(i18n: LocalizationService, period_key: str, counts: OrderCounts) -> str:
     return i18n.t(
         "admin.stats_orders_line",
         period=i18n.t(period_key),
@@ -130,12 +128,8 @@ def _product_lines(
     ]
 
 
-def _general_line(
-    i18n: LocalizationService, icon: str, label_key: str, value: int
-) -> str:
-    return i18n.t(
-        "admin.stats_general_line", icon=icon, label=i18n.t(label_key), value=value
-    )
+def _general_line(i18n: LocalizationService, icon: str, label_key: str, value: int) -> str:
+    return i18n.t("admin.stats_general_line", icon=icon, label=i18n.t(label_key), value=value)
 
 
 def _section_header(i18n: LocalizationService, header_key: str, note_key: str) -> str:
@@ -161,9 +155,7 @@ def format_statistics(
     # No products at all is a different emptiness from products that never sold:
     # the first means "set up your catalog", the second "nothing has sold yet".
     sales_empty_key = (
-        "admin.stats_empty_products"
-        if general.products == 0
-        else "admin.stats_empty_sales"
+        "admin.stats_empty_products" if general.products == 0 else "admin.stats_empty_sales"
     )
 
     blocks: list[list[str]] = [
@@ -179,9 +171,7 @@ def format_statistics(
             i18n.t("admin.stats_general"),
             _general_line(i18n, "👤", "admin.stats_users", general.users),
             _general_line(i18n, "📂", "admin.stats_categories", general.categories),
-            _general_line(
-                i18n, "🏷", "admin.stats_subcategories", general.subcategories
-            ),
+            _general_line(i18n, "🏷", "admin.stats_subcategories", general.subcategories),
             _general_line(i18n, "📦", "admin.stats_products", general.products),
             _general_line(i18n, "🧾", "admin.stats_orders_total", general.orders),
         ],
@@ -193,10 +183,7 @@ def format_statistics(
         ],
         [
             _section_header(i18n, "admin.stats_revenue", "admin.stats_revenue_note"),
-            *(
-                _revenue_line(i18n, key, period, currency)
-                for key, period in periods
-            ),
+            *(_revenue_line(i18n, key, period, currency) for key, period in periods),
         ],
         [
             i18n.t("admin.stats_top"),

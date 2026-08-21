@@ -45,9 +45,7 @@ def _user(uid: int = ADMIN_ID) -> User:
 
 
 def _msg(chat: Chat, body: str = "/admin") -> Message:
-    return Message(
-        message_id=1, date=datetime.now(UTC), chat=chat, from_user=_user(), text=body
-    )
+    return Message(message_id=1, date=datetime.now(UTC), chat=chat, from_user=_user(), text=body)
 
 
 def _upd_msg(chat: Chat, body: str = "/admin") -> Update:
@@ -158,7 +156,9 @@ async def test_error_notifier_never_answers_a_group(kind: str, cid: int) -> None
         text="/admin",
     )
     await notify_user_of_error(
-        Update(update_id=1, message=message), FakeBot(), "err"  # type: ignore[arg-type]
+        Update(update_id=1, message=message),
+        FakeBot(),
+        "err",  # type: ignore[arg-type]
     )
 
     assert sent == [], f"error notification leaked into a {kind}"
@@ -225,9 +225,7 @@ async def test_group_update_creates_no_fsm_state(kind: str, cid: int) -> None:
 @pytest.mark.asyncio
 async def test_group_start_creates_no_user_row(session: AsyncSession) -> None:
     sink = Sink()
-    await PrivateChatMiddleware()(
-        sink, _upd_msg(_chat("supergroup", MANAGER_GROUP), "/start"), {}
-    )
+    await PrivateChatMiddleware()(sink, _upd_msg(_chat("supergroup", MANAGER_GROUP), "/start"), {})
 
     assert sink.hits == []
     assert await UserRepository(session).get_by_telegram_id(ADMIN_ID) is None
@@ -284,8 +282,7 @@ async def test_broadcast_can_only_reach_individuals(session: AsyncSession) -> No
     # a stray group id recorded as a user by an older build or a manual edit
     await session.execute(
         sql_text(
-            "INSERT INTO users (telegram_id, language, selected_city) "
-            "VALUES (:tid, 'en', 'berlin')"
+            "INSERT INTO users (telegram_id, language, selected_city) VALUES (:tid, 'en', 'berlin')"
         ),
         {"tid": MANAGER_GROUP},
     )

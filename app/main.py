@@ -36,9 +36,7 @@ async def run() -> None:
             handle_signals=True,
         )
     except TelegramUnauthorizedError:
-        logger.exception(
-            "Telegram rejected BOT_TOKEN. Set a valid token in .env and retry."
-        )
+        logger.exception("Telegram rejected BOT_TOKEN. Set a valid token in .env and retry.")
         raise
     finally:
         await bot.session.close()

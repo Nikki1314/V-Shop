@@ -55,9 +55,7 @@ def product_added_keyboard(
     Without it (legacy products carrying no brand) it falls back to categories.
     """
     continue_target = (
-        f"subcat:{subcategory_id}"
-        if subcategory_id is not None
-        else CALLBACK_CONTINUE_SHOPPING
+        f"subcat:{subcategory_id}" if subcategory_id is not None else CALLBACK_CONTINUE_SHOPPING
     )
     return InlineKeyboardMarkup(
         inline_keyboard=[

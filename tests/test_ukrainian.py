@@ -47,25 +47,58 @@ def test_ukrainian_covers_every_user_facing_area() -> None:
     uk = LocalizationService.from_code("uk")
     en = LocalizationService.from_code("en")
     areas = {
-        "onboarding": ["onboarding.choose_language", "onboarding.welcome",
-                       "onboarding.choose_city", "onboarding.city_saved"],
+        "onboarding": [
+            "onboarding.choose_language",
+            "onboarding.welcome",
+            "onboarding.choose_city",
+            "onboarding.city_saved",
+        ],
         "main menu": ["menu.catalog", "menu.cart", "menu.info"],
         "catalog": ["catalog.choose_category", "catalog.empty", "catalog.category_empty"],
         "cart": ["cart.title", "cart.empty", "cart.checkout", "cart.item_removed"],
-        "checkout": ["checkout.ask_name", "checkout.ask_address", "checkout.success",
-                     "checkout.cancelled", "checkout.invalid_phone"],
-        "payment methods": ["checkout.delivery_pickup", "checkout.delivery_courier",
-                            "checkout.delivery_postal", "checkout.delivery_service",
-                            "info.berlin.payment", "info.other.payment"],
-        "information": ["info.title", "info.btn_delivery", "info.btn_contacts",
-                        "info.change_language", "info.change_city"],
-        "order statuses": ["admin.order_status_new", "admin.order_status_accepted",
-                           "admin.order_status_completed", "admin.order_status_cancelled",
-                           "admin.order_status_changed"],
-        "errors": ["error.generic", "error.database", "error.telegram",
-                   "error.network", "error.invalid_callback"],
-        "confirmations": ["common.confirm", "common.cancel", "checkout.confirm_prompt",
-                          "product.added", "cart.updated"],
+        "checkout": [
+            "checkout.ask_name",
+            "checkout.ask_address",
+            "checkout.success",
+            "checkout.cancelled",
+            "checkout.invalid_phone",
+        ],
+        "payment methods": [
+            "checkout.delivery_pickup",
+            "checkout.delivery_courier",
+            "checkout.delivery_postal",
+            "checkout.delivery_service",
+            "info.berlin.payment",
+            "info.other.payment",
+        ],
+        "information": [
+            "info.title",
+            "info.btn_delivery",
+            "info.btn_contacts",
+            "info.change_language",
+            "info.change_city",
+        ],
+        "order statuses": [
+            "admin.order_status_new",
+            "admin.order_status_accepted",
+            "admin.order_status_completed",
+            "admin.order_status_cancelled",
+            "admin.order_status_changed",
+        ],
+        "errors": [
+            "error.generic",
+            "error.database",
+            "error.telegram",
+            "error.network",
+            "error.invalid_callback",
+        ],
+        "confirmations": [
+            "common.confirm",
+            "common.cancel",
+            "checkout.confirm_prompt",
+            "product.added",
+            "cart.updated",
+        ],
     }
     for area, keys in areas.items():
         for key in keys:
@@ -94,9 +127,7 @@ def test_ukrainian_preserves_format_placeholders() -> None:
     uk_cat, en_cat = load_locale("uk"), load_locale("en")
     pattern = re.compile(r"\{(\w+)\}")
     for key in sorted(uk_cat):
-        assert Counter(pattern.findall(uk_cat[key])) == Counter(
-            pattern.findall(en_cat[key])
-        ), key
+        assert Counter(pattern.findall(uk_cat[key])) == Counter(pattern.findall(en_cat[key])), key
 
 
 # --------------------------------------------------------------- selecting
@@ -138,9 +169,7 @@ async def test_ukrainian_persists_as_the_string_uk(session: AsyncSession) -> Non
     await UserService(session).save_language(user, LanguageCode.UK)
     await session.flush()
 
-    raw = await session.scalar(
-        select(User.language).where(User.telegram_id == 5002)
-    )
+    raw = await session.scalar(select(User.language).where(User.telegram_id == 5002))
     assert raw is LanguageCode.UK
     assert LanguageCode(raw).value == "uk"
 
@@ -260,8 +289,9 @@ async def test_order_status_notifications_render_in_ukrainian(
     for status, label in expected.items():
         assert status_label(i18n, status) == label
 
-    changed = i18n.t("admin.order_status_changed", order_id=7,
-                     status=status_label(i18n, OrderStatus.ACCEPTED))
+    changed = i18n.t(
+        "admin.order_status_changed", order_id=7, status=status_label(i18n, OrderStatus.ACCEPTED)
+    )
     assert "Замовлення #7" in changed
     assert "Прийнято" in changed
 
@@ -306,9 +336,18 @@ async def test_unknown_language_still_falls_back_to_english(
     category = await CategoryRepository(session).create_category("Liquids")
     product = await ProductRepository(session).create_product(
         category_id=category.id,
-        name_ru="RU", name_en="EN", name_de="DE", name_uk="UA",
-        description_ru="r", description_en="e", description_de="d", description_uk="u",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("1.00"),
+        name_ru="RU",
+        name_en="EN",
+        name_de="DE",
+        name_uk="UA",
+        description_ru="r",
+        description_en="e",
+        description_de="d",
+        description_uk="u",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("1.00"),
     )
     await session.flush()
 

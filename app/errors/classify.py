@@ -46,7 +46,7 @@ def classify_error(exc: BaseException) -> ErrorKind:
         return ErrorKind.DATABASE
     if isinstance(exc, (TimeoutError, asyncio.TimeoutError, ConnectionError, OSError)):
         return ErrorKind.NETWORK
-    if AiohttpClientError and isinstance(exc, AiohttpClientError):
+    if AiohttpClientError is not None and isinstance(exc, AiohttpClientError):
         return ErrorKind.NETWORK
     # asyncpg / driver errors often wrap as Exception subclasses
     module = type(exc).__module__ or ""

@@ -8,6 +8,7 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from aiogram.types import User as TgUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters.localized_text import LocalizedText
@@ -21,10 +22,12 @@ from app.keyboards.cart import (
     cart_keyboard,
 )
 from app.keyboards.product import CALLBACK_CART_ADD_PREFIX, product_added_keyboard
+from app.models.user import User
 from app.services.cart import CartService, CartView
 from app.services.catalog import CatalogService
 from app.services.localization import LocalizationService
 from app.services.user import UserService
+from app.utils.telegram_ui import as_message
 from app.utils.validators import parse_positive_int
 
 logger = logging.getLogger(__name__)
@@ -48,7 +51,11 @@ def format_cart_text(i18n: LocalizationService, view: CartView) -> str:
     return "\n".join(lines)
 
 
-async def _load_onboarded_user(session: AsyncSession, tg_user, i18n: LocalizationService):
+async def _load_onboarded_user(
+    session: AsyncSession,
+    tg_user: TgUser,
+    i18n: LocalizationService,
+) -> tuple[User | None, LocalizationService]:
     service = UserService(session)
     user = await service.ensure_user(tg_user)
     if not UserService.is_onboarded(user):
@@ -109,7 +116,8 @@ async def open_cart_callback(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -120,7 +128,7 @@ async def open_cart_callback(
 
     await callback.answer()
     await render_cart(
-        target=callback.message,
+        target=message,
         session=session,
         user_id=user.id,
         i18n=localized,
@@ -139,7 +147,8 @@ async def add_to_cart(
     session: AsyncSession,
     i18n: LocalizationService,
 ) -> None:
-    if callback.from_user is None or callback.data is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or callback.data is None or message is None:
         await callback.answer()
         return
 
@@ -161,11 +170,9 @@ async def add_to_cart(
 
     await CartService(session).add_product(user.id, product, quantity=1)
     await callback.answer(localized.t("product.added"))
-    await callback.message.answer(
+    await message.answer(
         localized.t("product.added"),
-        reply_markup=product_added_keyboard(
-            localized, subcategory_id=product.subcategory_id
-        ),
+        reply_markup=product_added_keyboard(localized, subcategory_id=product.subcategory_id),
     )
 
 
@@ -177,7 +184,8 @@ async def _mutate_and_refresh(
     action: str,
     item_id: int,
 ) -> None:
-    if callback.from_user is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or message is None:
         await callback.answer()
         return
 
@@ -203,7 +211,7 @@ async def _mutate_and_refresh(
     if not ok:
         await callback.answer(localized.t("error.invalid_callback"), show_alert=True)
         await render_cart(
-            target=callback.message,
+            target=message,
             session=session,
             user_id=user.id,
             i18n=localized,
@@ -213,7 +221,7 @@ async def _mutate_and_refresh(
 
     await callback.answer(notice)
     await render_cart(
-        target=callback.message,
+        target=message,
         session=session,
         user_id=user.id,
         i18n=localized,

@@ -95,9 +95,7 @@ class AdminCatalogService:
             )
         product_count = await self.categories.count_products(category.id)
         if product_count > 0:
-            raise CategoryInUseError(
-                f"Category {category.id} still has {product_count} product(s)"
-            )
+            raise CategoryInUseError(f"Category {category.id} still has {product_count} product(s)")
         await self.categories.delete(category)
         invalidate_categories_cache()
 
@@ -109,9 +107,7 @@ class AdminCatalogService:
         *,
         active_only: bool = False,
     ) -> list[Subcategory]:
-        return await self.subcategories.list_by_category(
-            category_id, active_only=active_only
-        )
+        return await self.subcategories.list_by_category(category_id, active_only=active_only)
 
     async def list_subcategories_with_counts(
         self,
@@ -172,9 +168,7 @@ class AdminCatalogService:
         *,
         direction: int,
     ) -> list[Subcategory]:
-        return await self.subcategories.move(
-            category_id, subcategory_id, direction=direction
-        )
+        return await self.subcategories.move(category_id, subcategory_id, direction=direction)
 
     async def reassign_subcategory(
         self,
@@ -312,7 +306,5 @@ class AdminCatalogService:
     async def delete_product(self, product: Product) -> None:
         refs = await self.products.count_order_references(product.id)
         if refs > 0:
-            raise ProductInUseError(
-                f"Product {product.id} is referenced by {refs} order item(s)"
-            )
+            raise ProductInUseError(f"Product {product.id} is referenced by {refs} order item(s)")
         await self.products.delete(product)

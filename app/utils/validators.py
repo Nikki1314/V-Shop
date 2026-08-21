@@ -92,32 +92,41 @@ def normalize_phone(raw: str | None) -> str | None:
     return normalized
 
 
+# Every primary key in the schema is a PostgreSQL ``integer``, so nothing larger
+# can name a real row. Values above this are rejected here rather than sent to
+# the database, where an out-of-range bind raises: on PostgreSQL a DataError,
+# on SQLite an OverflowError. Either lands in the "unexpected" bucket and logs a
+# full traceback — which any customer could then trigger at will, since Telegram
+# allows 64 bytes of callback data and the parsers accept every digit of it.
+MAX_DB_INT = 2_147_483_647
+
+
 def parse_positive_int(raw: str | None) -> int | None:
-    """Parse a positive integer (> 0)."""
+    """Parse a positive integer (``0 < value <= MAX_DB_INT``)."""
     if raw is None:
         return None
     text = raw.strip()
-    if not text.isdigit():
+    if not text.isdigit() or len(text) > 10:
         return None
     try:
         value = int(text)
     except ValueError:
         return None
-    return value if value > 0 else None
+    return value if 0 < value <= MAX_DB_INT else None
 
 
 def parse_nonnegative_int(raw: str | None) -> int | None:
-    """Parse an integer ``>= 0`` (e.g. pagination page)."""
+    """Parse an integer ``0 <= value <= MAX_DB_INT`` (e.g. a pagination page)."""
     if raw is None:
         return None
     text = raw.strip()
-    if not text.isdigit():
+    if not text.isdigit() or len(text) > 10:
         return None
     try:
         value = int(text)
     except ValueError:
         return None
-    return value if value >= 0 else None
+    return value if 0 <= value <= MAX_DB_INT else None
 
 
 def parse_callback_id(data: str | None, prefix: str) -> int | None:

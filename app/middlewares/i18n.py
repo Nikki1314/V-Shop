@@ -7,7 +7,8 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject, User as TgUser
+from aiogram.types import TelegramObject
+from aiogram.types import User as TgUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User

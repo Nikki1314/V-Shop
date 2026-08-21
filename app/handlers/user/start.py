@@ -17,6 +17,7 @@ from app.models.user import User
 from app.services.localization import LocalizationService
 from app.services.user import UserService
 from app.states.onboarding import OnboardingStates
+from app.utils.telegram_ui import as_message
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +65,11 @@ async def _continue_onboarding(
 
 
 async def _clear_inline_keyboard(callback: CallbackQuery) -> None:
-    if callback.message is None:
+    message = as_message(callback)
+    if message is None:
         return
     try:
-        await callback.message.edit_reply_markup(reply_markup=None)
+        await message.edit_reply_markup(reply_markup=None)
     except Exception:
         logger.debug("Could not clear inline keyboard", exc_info=True)
 
@@ -107,7 +109,8 @@ async def on_language_chosen(
     session: AsyncSession,
 ) -> None:
     """Persist language, then ask for city (or open main menu if city exists)."""
-    if callback.from_user is None or callback.data is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or callback.data is None or message is None:
         await callback.answer()
         return
 
@@ -128,13 +131,13 @@ async def on_language_chosen(
     i18n = LocalizationService.from_code(language)
     await callback.answer()
     await _clear_inline_keyboard(callback)
-    await callback.message.answer(i18n.t("onboarding.language_saved"))
+    await message.answer(i18n.t("onboarding.language_saved"))
 
     if UserService.needs_city(user):
-        await _ask_city(callback.message, i18n, state)
+        await _ask_city(message, i18n, state)
         return
 
-    await _show_main_menu(callback.message, i18n, state)
+    await _show_main_menu(message, i18n, state)
 
 
 @router.callback_query(F.data.startswith("city:"))
@@ -144,7 +147,8 @@ async def on_city_chosen(
     session: AsyncSession,
 ) -> None:
     """Persist city and show the main menu."""
-    if callback.from_user is None or callback.data is None or callback.message is None:
+    message = as_message(callback)
+    if callback.from_user is None or callback.data is None or message is None:
         await callback.answer()
         return
 
@@ -165,7 +169,7 @@ async def on_city_chosen(
         i18n = LocalizationService.default()
         await callback.answer()
         await _clear_inline_keyboard(callback)
-        await _ask_language(callback.message, i18n, state)
+        await _ask_language(message, i18n, state)
         return
 
     await service.save_city(user, city)
@@ -173,5 +177,5 @@ async def on_city_chosen(
 
     await callback.answer()
     await _clear_inline_keyboard(callback)
-    await callback.message.answer(i18n.t("onboarding.city_saved"))
-    await _show_main_menu(callback.message, i18n, state)
+    await message.answer(i18n.t("onboarding.city_saved"))
+    await _show_main_menu(message, i18n, state)

@@ -107,7 +107,6 @@ async def dashboard(
     return format_statistics(stats, LocalizationService(language))
 
 
-
 class _RecordingBot(Bot):
     """A Bot that records outgoing API calls instead of making them."""
 
@@ -148,6 +147,7 @@ def production_router() -> Router:
 
 def routers_under(name: str) -> set[str]:
     """Every router name in the subtree rooted at ``name``."""
+
     def find(router: Router) -> Router | None:
         if router.name == name:
             return router
@@ -213,11 +213,7 @@ async def _feed(
 @pytest.mark.parametrize("language", LANGUAGES)
 def test_the_button_is_on_the_admin_menu(language: str) -> None:
     i18n = LocalizationService(language)
-    labels = {
-        button.text
-        for row in admin_menu_keyboard(i18n).keyboard
-        for button in row
-    }
+    labels = {button.text for row in admin_menu_keyboard(i18n).keyboard for button in row}
 
     assert i18n.t("admin.menu_statistics") in labels
     # the existing sections must still be there
@@ -229,9 +225,7 @@ def test_the_button_is_on_the_admin_menu(language: str) -> None:
 def test_the_button_is_on_no_customer_keyboard(language: str) -> None:
     """A customer must never be offered the dashboard."""
     i18n = LocalizationService(language)
-    labels = {
-        button.text for row in main_menu_keyboard(i18n).keyboard for button in row
-    }
+    labels = {button.text for row in main_menu_keyboard(i18n).keyboard for button in row}
 
     assert i18n.t("admin.menu_statistics") not in labels
 
@@ -263,16 +257,17 @@ async def test_a_customer_is_dropped_by_the_admin_middleware() -> None:
         return {"event_from_user": User(id=user_id, is_bot=False, first_name="T")}
 
     customer = data_for(CUSTOMER_ID)
-    assert await middleware(
-        handler, _message(button_text("en"), user_id=CUSTOMER_ID), customer
-    ) is None
+    assert (
+        await middleware(handler, _message(button_text("en"), user_id=CUSTOMER_ID), customer)
+        is None
+    )
     assert await middleware(handler, _callback(user_id=CUSTOMER_ID), customer) is None
     assert reached == []
 
     admin = data_for(ADMIN_ID)
-    assert await middleware(
-        handler, _message(button_text("en"), user_id=ADMIN_ID), admin
-    ) == "reached"
+    assert (
+        await middleware(handler, _message(button_text("en"), user_id=ADMIN_ID), admin) == "reached"
+    )
     assert reached
 
 
@@ -346,8 +341,11 @@ async def test_the_dashboard_reports_every_required_figure(
 
     # GENERAL — users, categories, subcategories, products, total orders
     for label, value in (
-        ("Users", 3), ("Categories", 2), ("Subcategories", 3),
-        ("Products", 8), ("Orders", 18),
+        ("Users", 3),
+        ("Categories", 2),
+        ("Subcategories", 3),
+        ("Products", 8),
+        ("Orders", 18),
     ):
         assert f"{label}: <b>{value}</b>" in text, f"missing {label}"
 
@@ -370,9 +368,7 @@ async def test_the_dashboard_reports_every_required_figure(
 
 
 @pytest.mark.asyncio
-async def test_every_section_is_present_and_ordered(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_every_section_is_present_and_ordered(session: AsyncSession, shop: Shop) -> None:
     text = await dashboard(session)
     i18n = LocalizationService("en")
 
@@ -391,22 +387,20 @@ async def test_every_section_is_present_and_ordered(
 
 
 @pytest.mark.asyncio
-async def test_the_dashboard_fits_one_telegram_message(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_the_dashboard_fits_one_telegram_message(session: AsyncSession, shop: Shop) -> None:
     """A dashboard split across two messages is not a dashboard."""
     assert len(await dashboard(session)) < TELEGRAM_MESSAGE_LIMIT
 
 
 @pytest.mark.asyncio
-async def test_the_layout_is_narrow_enough_for_a_phone(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_the_layout_is_narrow_enough_for_a_phone(session: AsyncSession, shop: Shop) -> None:
     """Long lines wrap mid-figure on a phone and the columns stop lining up."""
     plain = (
         (await dashboard(session))
-        .replace("<b>", "").replace("</b>", "")
-        .replace("<i>", "").replace("</i>", "")
+        .replace("<b>", "")
+        .replace("</b>", "")
+        .replace("<i>", "")
+        .replace("</i>", "")
     )
     longest = max(plain.splitlines(), key=len)
 
@@ -422,18 +416,21 @@ async def test_the_dashboard_renders_in_every_language(
     text = await dashboard(session, language)
 
     for key in (
-        "admin.stats_title", "admin.stats_general", "admin.stats_orders",
-        "admin.stats_revenue", "admin.stats_top", "admin.stats_bottom",
-        "admin.stats_users", "admin.stats_period_current",
+        "admin.stats_title",
+        "admin.stats_general",
+        "admin.stats_orders",
+        "admin.stats_revenue",
+        "admin.stats_top",
+        "admin.stats_bottom",
+        "admin.stats_users",
+        "admin.stats_period_current",
     ):
         assert i18n.t(key) in text, f"{language}: {key} not rendered"
     assert "{" not in text, f"{language}: an unfilled placeholder leaked through"
 
 
 @pytest.mark.asyncio
-async def test_the_languages_actually_differ(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_the_languages_actually_differ(session: AsyncSession, shop: Shop) -> None:
     rendered = {lang: await dashboard(session, lang) for lang in LANGUAGES}
 
     assert len(set(rendered.values())) == len(LANGUAGES), "two languages render alike"
@@ -443,9 +440,7 @@ async def test_the_languages_actually_differ(
 
 
 @pytest.mark.asyncio
-async def test_hidden_products_never_reach_the_dashboard(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_hidden_products_never_reach_the_dashboard(session: AsyncSession, shop: Shop) -> None:
     """``ghost``/``shelved``/``archived`` are off sale; two of them have sales."""
     text = await dashboard(session)
 
@@ -455,17 +450,24 @@ async def test_hidden_products_never_reach_the_dashboard(
 
 @pytest.mark.parametrize("language", LANGUAGES)
 @pytest.mark.asyncio
-async def test_product_names_are_localized(
-    session: AsyncSession, language: str
-) -> None:
+async def test_product_names_are_localized(session: AsyncSession, language: str) -> None:
     admin = AdminService(session)
     category = await admin.create_category("C")
     await session.flush()
     await admin.create_product(
         category_id=category.id,
-        name_ru="Манго", name_en="Mango", name_de="Mango-Eis", name_uk="Манго Айс",
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("10.00"),
+        name_ru="Манго",
+        name_en="Mango",
+        name_de="Mango-Eis",
+        name_uk="Манго Айс",
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("10.00"),
     )
     await session.flush()
 
@@ -484,9 +486,18 @@ async def test_product_names_are_html_escaped(session: AsyncSession) -> None:
     hostile = "<script>x</script> & co"  # short enough to survive truncation
     await admin.create_product(
         category_id=category.id,
-        name_ru=hostile, name_en=hostile, name_de=hostile, name_uk=hostile,
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("10.00"),
+        name_ru=hostile,
+        name_en=hostile,
+        name_de=hostile,
+        name_uk=hostile,
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("10.00"),
     )
     await session.flush()
 
@@ -540,9 +551,18 @@ async def test_products_with_no_sales_say_so_differently(
     await session.flush()
     await admin.create_product(
         category_id=category.id,
-        name_ru="p", name_en="p", name_de="p", name_uk="p",
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("10.00"),
+        name_ru="p",
+        name_en="p",
+        name_de="p",
+        name_uk="p",
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("10.00"),
     )
     await session.flush()
     i18n = LocalizationService("en")
@@ -569,9 +589,7 @@ async def test_products_with_no_sales_say_so_differently(
         ("-42.5", "€-42.50"),
     ],
 )
-def test_english_amounts_are_grouped_and_two_decimal(
-    amount: str, expected: str
-) -> None:
+def test_english_amounts_are_grouped_and_two_decimal(amount: str, expected: str) -> None:
     assert format_amount(Decimal(amount), LocalizationService("en")) == expected
 
 
@@ -584,9 +602,7 @@ def test_english_amounts_are_grouped_and_two_decimal(
         ("uk", "1 234 567,89 €"),
     ],
 )
-def test_money_follows_the_reader_s_own_convention(
-    language: str, expected: str
-) -> None:
+def test_money_follows_the_reader_s_own_convention(language: str, expected: str) -> None:
     """
     "1,234.56" reads as one-point-two-three to a German shop owner.
 
@@ -606,9 +622,7 @@ def test_every_language_places_the_currency(language: str) -> None:
 
 def test_the_currency_symbol_is_configurable(session: AsyncSession) -> None:
     """A shop that does not price in euros must not be stuck with one."""
-    assert format_amount(
-        Decimal("5"), LocalizationService("en"), currency="£"
-    ) == "£5.00"
+    assert format_amount(Decimal("5"), LocalizationService("en"), currency="£") == "£5.00"
     assert Settings.model_fields["currency_symbol"].default == "€"
 
 
@@ -616,9 +630,7 @@ def test_the_currency_symbol_is_configurable(session: AsyncSession) -> None:
 async def test_the_configured_currency_reaches_the_dashboard(
     session: AsyncSession, shop: Shop
 ) -> None:
-    text = await _render(
-        session, LocalizationService("en"), settings_for(ADMIN_ID, currency="zł")
-    )
+    text = await _render(session, LocalizationService("en"), settings_for(ADMIN_ID, currency="zł"))
 
     assert "zł193.00" in text
     assert "€" not in text
@@ -628,9 +640,7 @@ def test_a_group_separator_never_doubles_as_the_decimal_mark() -> None:
     """Within one language the two marks must differ, or the number is unreadable."""
     for language in LANGUAGES:
         i18n = LocalizationService(language)
-        assert i18n.t("format.group_separator") != i18n.t("format.decimal_separator"), (
-            language
-        )
+        assert i18n.t("format.group_separator") != i18n.t("format.decimal_separator"), language
 
 
 # =============================================================== timezone
@@ -641,9 +651,7 @@ async def test_the_dashboard_uses_the_configured_timezone(
     session: AsyncSession, shop: Shop
 ) -> None:
     """``_render`` must pass ``settings.app_timezone`` through, not a default."""
-    berlin = await _render(
-        session, LocalizationService("en"), settings_for(ADMIN_ID)
-    )
+    berlin = await _render(session, LocalizationService("en"), settings_for(ADMIN_ID))
     honolulu = await _render(
         session,
         LocalizationService("en"),
@@ -655,9 +663,7 @@ async def test_the_dashboard_uses_the_configured_timezone(
 
 
 @pytest.mark.asyncio
-async def test_a_broken_timezone_still_renders(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_a_broken_timezone_still_renders(session: AsyncSession, shop: Shop) -> None:
     """A typo in APP_TIMEZONE must not take the dashboard down."""
     text = await _render(
         session, LocalizationService("en"), settings_for(ADMIN_ID, timezone="Not/AZone")
@@ -696,9 +702,7 @@ def _bad_request(message: str) -> TelegramBadRequest:
 
 
 @pytest.mark.asyncio
-async def test_refresh_redraws_the_dashboard(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_refresh_redraws_the_dashboard(session: AsyncSession, shop: Shop) -> None:
     spy = _SpyMessage()
     callback = _SpyCallback(spy)
 
@@ -715,9 +719,7 @@ async def test_refresh_redraws_the_dashboard(
 
 
 @pytest.mark.asyncio
-async def test_refresh_tolerates_an_unchanged_dashboard(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_refresh_tolerates_an_unchanged_dashboard(session: AsyncSession, shop: Shop) -> None:
     """
     Nothing sold since the last tap is the common case, not an error.
 
@@ -738,9 +740,7 @@ async def test_refresh_tolerates_an_unchanged_dashboard(
 
 
 @pytest.mark.asyncio
-async def test_refresh_reraises_any_other_api_failure(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_refresh_reraises_any_other_api_failure(session: AsyncSession, shop: Shop) -> None:
     spy = _SpyMessage(_bad_request("Bad Request: message to edit not found"))
     callback = _SpyCallback(spy)
 
@@ -754,9 +754,7 @@ async def test_refresh_reraises_any_other_api_failure(
 
 
 @pytest.mark.asyncio
-async def test_refresh_survives_an_inaccessible_message(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_refresh_survives_an_inaccessible_message(session: AsyncSession, shop: Shop) -> None:
     """An old dashboard the bot can no longer edit must not raise."""
     callback = _SpyCallback(None)
 
@@ -811,12 +809,12 @@ def test_the_admin_tree_carries_both_gates() -> None:
     admin = next(r for r in production_router().sub_routers if r.name == "admin")
 
     for observer in (admin.message, admin.callback_query):
-        assert any(
-            isinstance(f.callback, IsAdmin) for f in observer._handler.filters
-        ), f"router-level IsAdmin filter missing on {observer.event_name}"
-        assert any(
-            isinstance(m, AdminOnlyMiddleware) for m in observer.middleware
-        ), f"AdminOnlyMiddleware missing on {observer.event_name}"
+        assert any(isinstance(f.callback, IsAdmin) for f in observer._handler.filters), (
+            f"router-level IsAdmin filter missing on {observer.event_name}"
+        )
+        assert any(isinstance(m, AdminOnlyMiddleware) for m in observer.middleware), (
+            f"AdminOnlyMiddleware missing on {observer.event_name}"
+        )
 
 
 @pytest.mark.asyncio
@@ -851,17 +849,13 @@ async def test_a_group_reaches_nothing_through_the_real_dispatcher(
     session: AsyncSession, shop: Shop, kind: str
 ) -> None:
     """Admin credentials, wrong chat type: still nothing."""
-    sent = await _feed(
-        session, _message(button_text("en"), kind=kind, user_id=ADMIN_ID)
-    )
+    sent = await _feed(session, _message(button_text("en"), kind=kind, user_id=ADMIN_ID))
 
     assert sent == [], f"the dashboard answered into a {kind}"
 
 
 @pytest.mark.asyncio
-async def test_the_button_is_refused_mid_wizard(
-    session: AsyncSession, shop: Shop
-) -> None:
+async def test_the_button_is_refused_mid_wizard(session: AsyncSession, shop: Shop) -> None:
     """
     Regression: the wizard guard listed every menu button except this one.
 
@@ -903,16 +897,20 @@ async def _seed_named(session: AsyncSession, **names: str) -> None:
     await session.flush()
     await admin.create_product(
         category_id=category.id,
-        description_ru="d", description_en="d", description_de="d", description_uk="d",
-        flavor="f", volume="30ml", nicotine_strength="3mg", price=Decimal("10.00"),
+        description_ru="d",
+        description_en="d",
+        description_de="d",
+        description_uk="d",
+        flavor="f",
+        volume="30ml",
+        nicotine_strength="3mg",
+        price=Decimal("10.00"),
         **names,
     )
     await session.flush()
 
 
-@pytest.mark.parametrize(
-    "name", [LONG_NAME, LONG_CYRILLIC], ids=["latin", "cyrillic"]
-)
+@pytest.mark.parametrize("name", [LONG_NAME, LONG_CYRILLIC], ids=["latin", "cyrillic"])
 def test_a_long_name_is_trimmed_to_one_line(name: str) -> None:
     i18n = LocalizationService("en")
 
@@ -954,9 +952,7 @@ def test_trimming_happens_before_escaping() -> None:
 
 @pytest.mark.parametrize("language", LANGUAGES)
 @pytest.mark.asyncio
-async def test_long_names_do_not_widen_the_dashboard(
-    session: AsyncSession, language: str
-) -> None:
+async def test_long_names_do_not_widen_the_dashboard(session: AsyncSession, language: str) -> None:
     """
     Regression: this cap was only ever measured against the short fixture names.
 
@@ -965,15 +961,14 @@ async def test_long_names_do_not_widen_the_dashboard(
     """
     await _seed_named(
         session,
-        name_ru=LONG_CYRILLIC, name_en=LONG_NAME,
-        name_de=LONG_NAME, name_uk=LONG_CYRILLIC,
+        name_ru=LONG_CYRILLIC,
+        name_en=LONG_NAME,
+        name_de=LONG_NAME,
+        name_uk=LONG_CYRILLIC,
     )
 
     text = await dashboard(session, language)
-    plain = (
-        text.replace("<b>", "").replace("</b>", "")
-        .replace("<i>", "").replace("</i>", "")
-    )
+    plain = text.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", "")
     longest = max(plain.splitlines(), key=len)
 
     assert len(longest) <= 40, f"{language}: {len(longest)} chars: {longest!r}"
@@ -992,10 +987,17 @@ async def test_a_pathological_catalog_still_fits_one_message(
         monster = f"{index} " + ("Extremely Verbose Product Name " * 7)
         await admin.create_product(
             category_id=category.id,
-            name_ru=monster, name_en=monster, name_de=monster, name_uk=monster,
-            description_ru="d", description_en="d",
-            description_de="d", description_uk="d",
-            flavor="f", volume="30ml", nicotine_strength="3mg",
+            name_ru=monster,
+            name_en=monster,
+            name_de=monster,
+            name_uk=monster,
+            description_ru="d",
+            description_en="d",
+            description_de="d",
+            description_uk="d",
+            flavor="f",
+            volume="30ml",
+            nicotine_strength="3mg",
             price=Decimal("10.00"),
         )
     await session.flush()
@@ -1059,6 +1061,4 @@ async def test_sections_are_separated_by_exactly_one_blank_line(
 
     gap = "\n\n"
     assert gap + "\n" not in text, "a doubled gap makes the message scroll for nothing"
-    assert text.count(gap) == 6, (
-        "title, general, orders, revenue, top, bottom, footnote"
-    )
+    assert text.count(gap) == 6, "title, general, orders, revenue, top, bottom, footnote"

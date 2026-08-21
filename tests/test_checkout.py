@@ -11,7 +11,7 @@ from app.handlers.user.checkout import build_checkout_summary
 from app.models.enums import CityChoice, DeliveryType, OrderStatus
 from app.repositories.cart import CartRepository
 from app.repositories.order import OrderRepository
-from app.services.cart import CartService, CartLineView, CartView
+from app.services.cart import CartLineView, CartService, CartView
 from app.services.localization import LocalizationService
 from app.services.order import (
     EmptyCartError,

@@ -49,9 +49,7 @@ class CategoryRepository(BaseRepository[Category]):
         stmt = select(Category)
         if active_only:
             stmt = stmt.where(Category.is_active.is_(True))
-            loader = selectinload(
-                Category.subcategories.and_(Subcategory.is_active.is_(True))
-            )
+            loader = selectinload(Category.subcategories.and_(Subcategory.is_active.is_(True)))
         else:
             loader = selectinload(Category.subcategories)
         result = await self.session.scalars(self._ordered(stmt).options(loader))

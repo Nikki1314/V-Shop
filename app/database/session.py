@@ -171,7 +171,7 @@ async def close_db() -> None:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """Yield an async database session with automatic cleanup."""
     session = get_session_factory()()
     try:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from aiogram import Dispatcher
 from aiogram.exceptions import TelegramAPIError, TelegramUnauthorizedError
 
 from app.bot import create_bot, create_dispatcher
@@ -24,7 +25,7 @@ def _is_placeholder_token(token: str) -> bool:
     return "your_bot_token" in lowered or token.startswith("123456:")
 
 
-def _assert_wiring(dispatcher) -> None:
+def _assert_wiring(dispatcher: Dispatcher) -> None:
     assert dispatcher.sub_routers, "No routers mounted on dispatcher"
     root = dispatcher.sub_routers[0]
     assert root.name == "root"

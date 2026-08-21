@@ -13,7 +13,10 @@ The repository ships a production-oriented Compose stack:
 
 1. Provision a host with Docker and Docker Compose.
 2. Copy the project (or pull from git).
-3. Create `.env` with **production** secrets (strong DB password, real `BOT_TOKEN`, locked-down `ADMIN_IDS`).
+3. Create `.env` from `.env.example` and fill in **production** secrets: a
+   real `BOT_TOKEN`, locked-down `ADMIN_IDS`, and a strong
+   `POSTGRES_PASSWORD` (it defaults to `vshop` if you leave it unset — see
+   [Configuration](configuration.md#docker-compose-extras)).
 4. Postgres is published on `127.0.0.1` only by default (see `docker-compose.yml`). For stricter production, omit the `db` ports mapping entirely so only the bot container can reach Postgres on the internal network.
 5. Start:
 
@@ -70,17 +73,51 @@ that is intentional, and preferable to starting a second stack silently.
 
 5. Confirm the data came with you (see *Verifying a deploy* below).
 
-### Updates
+### Updates — the safe production update procedure
+
+This is the whole procedure. Run it in order; steps 1 and 5 are the ones people
+skip and regret.
 
 ```bash
+# 1. Back up, and record what you are about to change
+docker exec vshop-db pg_dump -U vshop -Fc vshop > vshop-$(date +%F).dump
+docker exec vshop-db psql -U vshop -d vshop -tAc   "SELECT system_identifier FROM pg_control_system();"          # write this down
+docker inspect vshop-db --format '{{ (index .Mounts 0).Name }}' # and this
+
+# 2. Get the new code
 git pull
+
+# 3. Deploy. Builds the image, recreates the bot container, keeps the volume.
 docker compose up -d --build
+
+# 4. Migrations run automatically: the container's command is
+#    `alembic upgrade head && python -m app.main`
+
+# 5. Verify before walking away
+docker compose logs bot | grep "Database identity"
+docker compose run --rm --no-deps bot python -m app.verify_deployment
 ```
 
-The bot entrypoint always runs `alembic upgrade head` before polling, so schema migrations apply on deploy.
+Step 5 is the point of the procedure. The identity line reports the cluster and
+its row counts:
 
-Because the project and volume names are pinned in `docker-compose.yml`, this is
-safe to run from any directory — the stack always attaches to the same database.
+```text
+Database identity: url=postgresql+asyncpg://vshop:***@db:5432/vshop
+  system_identifier=7675364240903147554 categories=12 products=84 users=430 orders=1180
+```
+
+**If `system_identifier` differs from step 1, stop.** The stack is attached to
+different storage. The old volume is almost certainly still on disk — see
+[Recovery](#recovery). Do not add data first; that makes the two datasets
+diverge.
+
+This procedure is safe to run from any directory, including a fresh clone under a
+different name, because `docker-compose.yml` pins both the Compose project name
+(`name: vshop`) and the volume name (`POSTGRES_VOLUME_NAME`, default
+`vshop_pgdata`). Earlier revisions derived both from the deployment directory,
+which is what caused the catalog to "disappear" after a redeploy — the stack
+silently created a new, empty volume, migrations applied cleanly to it, and the
+bot started healthy with nothing in it.
 
 ### Verifying a deploy
 
@@ -104,6 +141,24 @@ Check two things in that line:
 If either looks wrong, **stop and investigate before adding any data** — the
 original volume is very likely still on disk and recoverable (`docker volume ls`).
 
+For a stronger check than the log line, run the read-only deploy verifier. It
+drives the same services and renderers the handlers use and prints what came
+back:
+
+```bash
+docker compose run --rm --no-deps bot python -m app.verify_deployment
+```
+
+It exists to separate two incidents that look identical to a user:
+
+- **rows missing from PostgreSQL** — a deployment or volume problem; stop, and
+  check `docker volume ls` before writing anything;
+- **rows present but nothing renders** — an application, query or schema bug;
+  the data is safe, the deploy is not.
+
+The report covers users, categories, subcategories, products, carts, orders and
+their statuses, historical totals, and the rendered statistics dashboard.
+
 ## Safe operations
 
 These preserve all production data and are the only commands needed for routine
@@ -116,6 +171,32 @@ docker compose down            # stop the stack; the database volume is KEPT
 docker compose logs -f bot     # follow logs
 docker compose ps              # status
 ```
+
+### What preserves data, and what destroys it
+
+Every row below was exercised against a running stack holding seeded data, and
+the data was re-verified afterwards both in PostgreSQL and through the bot's own
+rendering (`python -m app.verify_deployment`).
+
+| Operation | Data |
+|---|---|
+| Bot process restart (`kill 1`, crash, `restart: unless-stopped`) | **Preserved** |
+| `docker compose restart bot` | **Preserved** |
+| `docker compose restart` (whole stack) | **Preserved** |
+| `docker compose down` then `up -d` (containers recreated) | **Preserved** |
+| `docker compose build --no-cache` + `up -d` | **Preserved** |
+| New application image (code change) deployed | **Preserved** |
+| `alembic upgrade head` | **Preserved** |
+| Redeploy from a **different directory** or a fresh clone | **Preserved** — the project and volume names are pinned in `docker-compose.yml` |
+| `docker compose down -v` | **DESTROYED** |
+| `docker volume rm` / `docker volume prune` | **DESTROYED** |
+| `docker system prune -a --volumes` | **DESTROYED** |
+| `alembic downgrade` past an index-only migration | **Columns dropped** — see [Migrations](#migrations) |
+
+The distinction that matters: containers and images are disposable, **the named
+volume is not**. Everything that only replaces containers or images is safe.
+Only commands that name a volume — or `prune`, which names them implicitly — are
+destructive.
 
 ## Backups
 
@@ -147,17 +228,131 @@ docker exec vshop-db dropdb -U vshop restore_check
 | `docker volume rm <name>` | Same, targeted at one volume. |
 | `docker volume prune` | Deletes **every** unreferenced volume on the host. `docker compose down` leaves the database volume unreferenced, so this destroys it. |
 | `docker system prune -a --volumes` | As above, plus images. |
-| `alembic downgrade …` | Drops tables. Never run against production. |
+| `alembic downgrade …` | **Depends on the target — see [Migrations](#migrations) below.** Two of the six only touch indexes and are safe; the others drop columns or every table. |
 
 Because `docker compose down` leaves `pgdata` dangling, do not schedule any
 Docker cleanup job on this host. If disk reclamation is genuinely needed, scope
 it — `docker image prune` is safe; volume pruning is not.
+
+## Migrations
+
+The bot container runs `alembic upgrade head` before it starts polling, so a
+deploy always brings the schema forward. Six migrations exist; the chain is
+linear and single-headed.
+
+| Revision | What `upgrade()` does | Is `downgrade()` data-safe? |
+|---|---|---|
+| `a9b389353e68` | creates every table (initial schema) | **No** — drops all tables |
+| `b2c4d5e6f7a8` | adds four performance indexes | Yes — indexes only |
+| `c7e1f4a9d3b6` | catalog hierarchy: adds `subcategories`, localized name columns, `uk` support; backfills existing rows | **No** — drops the new columns and their data |
+| `d4f2a8c1b9e3` | adds `orders.payment_method` (nullable) | **No** — drops the column |
+| `e5a3c7d21f04` | adds `(product_id, order_id)` on `order_items`, drops the superseded single-column index | Yes — indexes only |
+| `f6b1d4e8a207` | drops two indexes made redundant by composites | Yes — indexes only |
+
+**No `upgrade()` in this project drops a table, drops a column, truncates, or
+deletes rows.** Backfills are `INSERT`/`UPDATE` only. That rule is enforced by
+`tests/test_migrations.py`, which fails the build if a future migration breaks it.
+
+Useful commands:
+
+```bash
+docker compose run --rm --no-deps bot alembic current    # where is this database?
+docker compose run --rm --no-deps bot alembic history    # the chain
+docker compose run --rm --no-deps bot alembic check      # does the schema match the models?
+```
+
+`alembic check` reporting "No new upgrade operations detected" means the
+migrations and the ORM models agree. It does **not** compare foreign-key names,
+so it cannot catch every kind of drift on its own.
+
+## Recovery
+
+### The catalog looks empty after a deploy
+
+Almost always the stack attached to different storage rather than losing data.
+**Do not add any data yet** — writing to the new volume makes the two datasets
+diverge and complicates the merge.
+
+```bash
+# 1. which volume is mounted now, and which exist?
+docker inspect vshop-db --format '{{ (index .Mounts 0).Name }}'
+docker volume ls | grep pgdata
+
+# 2. is the old one still there with the data in it?
+docker run --rm -v <old-volume>:/var/lib/postgresql/data -e POSTGRES_PASSWORD=x   --name vshop-inspect -d postgres:16-alpine
+docker exec vshop-inspect psql -U vshop -d vshop   -c "SELECT count(*) FROM products;"
+docker rm -f vshop-inspect
+
+# 3. point the stack back at it and redeploy
+echo "POSTGRES_VOLUME_NAME=<old-volume>" >> .env
+docker compose up -d
+```
+
+Confirm the `system_identifier` in the startup log matches what you recorded
+before the deploy.
+
+### Restoring from a dump
+
+```bash
+docker compose stop bot                      # stop writes first
+docker exec -i vshop-db dropdb -U vshop vshop
+docker exec -i vshop-db createdb -U vshop vshop
+docker exec -i vshop-db pg_restore -U vshop -d vshop < vshop-YYYY-MM-DD.dump
+docker compose start bot                     # migrations run again on start
+```
+
+`dropdb` destroys the current database. Take a dump of the *current* state first,
+even if you believe it is empty — it costs seconds and it is the only way back
+if the restore turns out to be the wrong file.
 
 ## Image build
 
 `Dockerfile` uses `python:3.13-slim`, installs `requirements.txt`, copies `app/` + Alembic, then `pip install -e .`.
 
 Default command: `python -m app.main` (Compose overrides with migrate + main).
+
+### The build fails at `pip install` with a certificate error
+
+```text
+SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED]
+certificate verify failed: unable to get local issuer certificate'))
+```
+
+The network between the build and `pypi.org` is intercepting TLS — a
+corporate proxy, or a consumer antivirus with HTTPS scanning enabled. The
+host trusts the interceptor's CA; the build container does not, so `pip`
+cannot verify PyPI even though the browser on the same machine works.
+
+Confirm it by checking who issued the certificate you are being served:
+
+```bash
+openssl s_client -connect pypi.org:443 -showcerts </dev/null 2>/dev/null \
+  | openssl x509 -noout -issuer
+```
+
+A public CA (Let's Encrypt, DigiCert, …) means the problem is elsewhere.
+Anything else — `... Web/Mail Shield`, `... SSL Inspection`, your employer's
+name — is the interceptor.
+
+Fix it by giving the build that CA:
+
+```bash
+cp corporate-root.crt docker/ca-certificates/
+docker compose build --no-cache bot
+```
+
+`docker/ca-certificates/` is empty by default and read only at build time;
+the running bot does not use it. Do **not** commit the certificate — it is
+specific to one network, and the directory's `.gitignore` excludes `*.crt`
+for that reason.
+
+Never "fix" this with `pip --trusted-host` or by disabling verification.
+That accepts *any* certificate for PyPI, which is the actual attack this
+check exists to stop.
+
+This is separate from `TELEGRAM_SSL_VERIFY`, which covers the same network
+problem for the **running bot's** calls to Telegram. A machine that needs one
+usually needs the other.
 
 ## Production checklist
 

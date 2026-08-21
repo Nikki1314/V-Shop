@@ -12,15 +12,20 @@ RUN apt-get update \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Optional trust anchors for networks that intercept TLS (corporate proxies,
+# antivirus HTTPS scanning). Empty by default — see docker/ca-certificates/.
+COPY docker/ca-certificates/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN pip install --upgrade pip --cert /etc/ssl/certs/ca-certificates.crt \
+    && pip install -r requirements.txt --cert /etc/ssl/certs/ca-certificates.crt
 
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
 COPY pyproject.toml .
 
-RUN pip install -e .
+RUN pip install -e . --cert /etc/ssl/certs/ca-certificates.crt
 
 CMD ["python", "-m", "app.main"]

@@ -40,8 +40,14 @@ from app.utils.cache import invalidate_categories_cache
 
 LANGS = ("ru", "en", "de", "uk")
 PRODUCT_DEFAULTS = dict(
-    name_en="P", name_de="P", description_ru="d", description_en="d",
-    description_de="d", flavor="f", volume="30ml", nicotine_strength="3mg",
+    name_en="P",
+    name_de="P",
+    description_ru="d",
+    description_en="d",
+    description_de="d",
+    flavor="f",
+    volume="30ml",
+    nicotine_strength="3mg",
     price=Decimal("10.00"),
 )
 
@@ -93,11 +99,11 @@ async def test_category_card_exposes_every_required_action(
             category_manage_keyboard(i18n, category, index=0, total=2, subcategory_count=3)
         )
     ]
-    assert f"{CALLBACK_CATEGORY_EDIT_PREFIX}{category.id}" in payloads   # edit
+    assert f"{CALLBACK_CATEGORY_EDIT_PREFIX}{category.id}" in payloads  # edit
     assert f"{CALLBACK_CATEGORY_TOGGLE_PREFIX}{category.id}" in payloads  # activate
-    assert f"admin:sub:list:{category.id}" in payloads                   # brands
-    assert any(d.startswith("admin:cat:del:") for d in payloads)         # delete
-    assert any(d.startswith("admin:cat:down:") for d in payloads)        # reorder
+    assert f"admin:sub:list:{category.id}" in payloads  # brands
+    assert any(d.startswith("admin:cat:del:") for d in payloads)  # delete
+    assert any(d.startswith("admin:cat:down:") for d in payloads)  # reorder
 
 
 @pytest.mark.asyncio
@@ -119,15 +125,11 @@ def test_language_pickers_offer_all_four_languages() -> None:
     i18n = LocalizationService.from_code("uk")
 
     cat = _buttons(category_language_keyboard(i18n, 7))
-    assert [d for _, d in cat][:4] == [
-        f"{CALLBACK_CATEGORY_NAME_PREFIX}7:{code}" for code in LANGS
-    ]
+    assert [d for _, d in cat][:4] == [f"{CALLBACK_CATEGORY_NAME_PREFIX}7:{code}" for code in LANGS]
     assert [t for t, _ in cat][:4] == [i18n.t(f"language.{c}") for c in LANGS]
 
     sub = _buttons(subcategory_language_keyboard(i18n, 9))
-    assert [d for _, d in sub][:4] == [
-        f"{CALLBACK_SUB_NAME_PREFIX}9:{code}" for code in LANGS
-    ]
+    assert [d for _, d in sub][:4] == [f"{CALLBACK_SUB_NAME_PREFIX}9:{code}" for code in LANGS]
 
 
 @pytest.mark.asyncio
@@ -140,15 +142,13 @@ async def test_subcategory_card_exposes_every_required_action(
     await session.flush()
     i18n = LocalizationService.from_code("en")
 
-    payloads = [
-        d for _, d in _buttons(subcategory_manage_keyboard(i18n, sub, index=0, total=2))
-    ]
-    assert any(d.startswith("admin:sub:edit:") for d in payloads)   # edit
-    assert any(d.startswith("admin:sub:act:") for d in payloads)    # activate
-    assert any(d.startswith("admin:sub:down:") for d in payloads)   # reorder
-    assert any(d.startswith("admin:sub:asg:") for d in payloads)    # assign
+    payloads = [d for _, d in _buttons(subcategory_manage_keyboard(i18n, sub, index=0, total=2))]
+    assert any(d.startswith("admin:sub:edit:") for d in payloads)  # edit
+    assert any(d.startswith("admin:sub:act:") for d in payloads)  # activate
+    assert any(d.startswith("admin:sub:down:") for d in payloads)  # reorder
+    assert any(d.startswith("admin:sub:asg:") for d in payloads)  # assign
     assert any(d.startswith(CALLBACK_SUB_DELETE_PREFIX) for d in payloads)
-    assert f"{CALLBACK_SUB_LIST_PREFIX}{category.id}" in payloads   # back
+    assert f"{CALLBACK_SUB_LIST_PREFIX}{category.id}" in payloads  # back
 
 
 @pytest.mark.asyncio
@@ -162,17 +162,15 @@ async def test_brand_list_marks_hidden_brands(session: AsyncSession) -> None:
     i18n = LocalizationService.from_code("en")
 
     labels = dict(
-        (d, t)
-        for t, d in _buttons(
-            subcategories_list_keyboard(i18n, category.id, [live, hidden])
-        )
+        (d, t) for t, d in _buttons(subcategories_list_keyboard(i18n, category.id, [live, hidden]))
     )
-    assert i18n.t("admin.subcategory_status_active") in labels[
-        f"{CALLBACK_SUB_VIEW_PREFIX}{live.id}"
-    ]
-    assert i18n.t("admin.subcategory_status_inactive") in labels[
-        f"{CALLBACK_SUB_VIEW_PREFIX}{hidden.id}"
-    ]
+    assert (
+        i18n.t("admin.subcategory_status_active") in labels[f"{CALLBACK_SUB_VIEW_PREFIX}{live.id}"]
+    )
+    assert (
+        i18n.t("admin.subcategory_status_inactive")
+        in labels[f"{CALLBACK_SUB_VIEW_PREFIX}{hidden.id}"]
+    )
     assert f"{CALLBACK_SUB_CREATE_PREFIX}{category.id}" in labels
 
 
@@ -187,12 +185,7 @@ async def test_assign_keyboard_omits_the_current_category(
     await session.flush()
     i18n = LocalizationService.from_code("en")
 
-    payloads = [
-        d
-        for _, d in _buttons(
-            subcategory_assign_keyboard(i18n, sub, [home, other])
-        )
-    ]
+    payloads = [d for _, d in _buttons(subcategory_assign_keyboard(i18n, sub, [home, other]))]
     assert f"{CALLBACK_SUB_ASSIGN_TO_PREFIX}{sub.id}:{other.id}" in payloads
     assert f"{CALLBACK_SUB_ASSIGN_TO_PREFIX}{sub.id}:{home.id}" not in payloads
 
@@ -201,8 +194,14 @@ def test_callback_payloads_fit_telegram_limit() -> None:
     """Telegram rejects callback_data longer than 64 bytes."""
     i18n = LocalizationService.from_code("ru")
     sub = Subcategory(
-        id=999999, category_id=888888, name_ru="Б", name_en="B",
-        name_de="B", name_uk="Б", sort_order=0, is_active=True,
+        id=999999,
+        category_id=888888,
+        name_ru="Б",
+        name_en="B",
+        name_de="B",
+        name_uk="Б",
+        sort_order=0,
+        is_active=True,
     )
     markups = [
         subcategory_manage_keyboard(i18n, sub, index=1, total=5),
@@ -226,8 +225,12 @@ async def test_full_subcategory_lifecycle_through_the_service(
     other = await admin.create_category("Disposables")
 
     sub = await admin.create_subcategory(
-        category_id=category.id, name="Brand A",
-        name_ru="Бренд", name_en="Brand A", name_de="Marke A", name_uk="Бренд А",
+        category_id=category.id,
+        name="Brand A",
+        name_ru="Бренд",
+        name_en="Brand A",
+        name_de="Marke A",
+        name_uk="Бренд А",
     )
     await session.flush()
     assert sub.name_uk == "Бренд А"
@@ -260,11 +263,15 @@ async def test_reordering_brands_within_a_category(session: AsyncSession) -> Non
 
     await admin.move_subcategory(category.id, c.id, direction=-1)
     assert [s.name_en for s in await admin.list_subcategories(category.id)] == [
-        "A", "C", "B",
+        "A",
+        "C",
+        "B",
     ]
     await admin.move_subcategory(category.id, a.id, direction=1)
     assert [s.name_en for s in await admin.list_subcategories(category.id)] == [
-        "C", "A", "B",
+        "C",
+        "A",
+        "B",
     ]
 
 
@@ -277,7 +284,9 @@ async def test_brand_with_products_cannot_be_deleted_from_admin(
     sub = await admin.create_subcategory(category_id=category.id, name="Brand A")
     await session.flush()
     await admin.create_product(
-        category_id=category.id, subcategory_id=sub.id, name_ru="Mango",
+        category_id=category.id,
+        subcategory_id=sub.id,
+        name_ru="Mango",
         **PRODUCT_DEFAULTS,
     )
     await session.flush()
