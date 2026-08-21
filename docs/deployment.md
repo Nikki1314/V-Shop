@@ -350,9 +350,93 @@ Never "fix" this with `pip --trusted-host` or by disabling verification.
 That accepts *any* certificate for PyPI, which is the actual attack this
 check exists to stop.
 
-This is separate from `TELEGRAM_SSL_VERIFY`, which covers the same network
-problem for the **running bot's** calls to Telegram. A machine that needs one
-usually needs the other.
+This fixes the **build** only. The running bot needs `TELEGRAM_SSL_VERIFY=false`
+on the same network, and installing the CA does **not** substitute for it:
+Python 3.13's default TLS context enables `VERIFY_X509_STRICT`, which rejects a
+CA certificate whose `basicConstraints` are not marked critical. Consumer
+antivirus roots frequently are not conformant, so the bot rejects the very
+certificate the build accepted:
+
+```text
+certificate verify failed: Basic Constraints of CA cert not marked critical
+```
+
+A machine behind TLS interception therefore needs **both**: the CA file for
+`pip`, and `TELEGRAM_SSL_VERIFY=false` for the bot's own traffic.
+
+### Order notifications stop arriving in the manager group
+
+```text
+Failed to send order notification order_id=… chat_id=…
+Bad Request: group chat was upgraded to a supergroup chat
+```
+
+Telegram assigns a **new chat id** when a basic group becomes a supergroup,
+which happens on its own the first time certain group settings are changed.
+`getChat` on the old id keeps answering, so the configuration looks correct
+while every send is rejected.
+
+The rejection carries the replacement id:
+
+```json
+{"ok": false, "error_code": 400,
+ "description": "Bad Request: group chat was upgraded to a supergroup chat",
+ "parameters": {"migrate_to_chat_id": -1004453891123}}
+```
+
+Put that value in `MANAGER_CHAT_ID` and `docker compose up -d`. A supergroup
+id always begins `-100`; an id without that prefix is a basic group and can
+still migrate out from under you. The same applies to
+`REVIEW_GROUP_CHAT_ID`.
+
+The failure is logged rather than raised — a chat that cannot be reached must
+not roll back an order that was already placed — so the log is where this is
+visible:
+
+```bash
+docker compose logs bot | grep "order notification"
+```
+
+### `Ports are not available` when starting the database
+
+```text
+Error response from daemon: Ports are not available: exposing port TCP
+127.0.0.1:5432 -> 0.0.0.0:0: listen tcp 127.0.0.1:5432: bind: An attempt was
+made to access a socket in a way forbidden by its access permissions.
+```
+
+Windows phrases "already in use" as a permissions error. Almost always a
+native PostgreSQL service already owns 5432:
+
+```bash
+netstat -ano | findstr :5432          # Windows — note the PID
+sudo ss -lptn 'sport = :5432'         # Linux
+```
+
+Publish the container on a different host port instead — the port *inside*
+the container is always 5432 and does not change:
+
+```bash
+POSTGRES_PORT=5433
+```
+
+### `password authentication failed for user "vshop"`
+
+`POSTGRES_PASSWORD` is read **only when the data directory is first created**.
+On every later start the image ignores it, so editing `.env` against an
+existing volume changes what the bot sends but not what the database expects,
+and the bot cannot log in to its own database.
+
+Local socket connections are trusted inside the container, so the role can be
+brought back in line without losing data:
+
+```bash
+docker exec vshop-db psql -U vshop -d vshop -c "ALTER USER vshop WITH PASSWORD 'new-password'"
+```
+
+Set the same value as `POSTGRES_PASSWORD` in `.env`, then
+`docker compose up -d`. Starting a **new** volume is the other option, and it
+discards the existing database — see [Destructive operations](#destructive-operations).
 
 ## Production checklist
 

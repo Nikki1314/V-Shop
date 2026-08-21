@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+import subprocess
 
 import pytest
 
@@ -313,17 +314,33 @@ def test_no_ca_certificate_is_committed_to_the_repository() -> None:
 
     Committing one would make every build everywhere trust that authority —
     the opposite of what the escape hatch is for.
-    """
-    certs = sorted(
-        p.relative_to(ROOT).as_posix()
-        for pattern in ("*.crt", "*.pem", "*.cer")
-        for p in ROOT.rglob(pattern)
-        if ".venv" not in p.parts and ".git" not in p.parts
-    )
-    assert certs == [], f"certificates must not be committed: {certs}"
 
+    The check is on what git *tracks*, not on what sits in the working tree.
+    An operator behind a TLS-intercepting proxy is instructed to drop their own
+    `.crt` into `docker/ca-certificates/`; an earlier version of this test
+    scanned the filesystem and so failed for exactly the people who had followed
+    the documented procedure.
+    """
     ignore = (ROOT / "docker" / "ca-certificates" / ".gitignore").read_text(encoding="utf-8")
     assert "*.crt" in ignore, "the CA directory must ignore certificates"
+
+    try:
+        tracked = subprocess.run(
+            ["git", "ls-files"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):  # pragma: no cover - no git available
+        pytest.skip("git is not available to inspect tracked files")
+    if tracked.returncode != 0:  # pragma: no cover - not a git checkout
+        pytest.skip("not a git checkout")
+
+    certs = sorted(
+        path for path in tracked.stdout.split() if path.endswith((".crt", ".pem", ".cer"))
+    )
+    assert certs == [], f"certificates must not be committed: {certs}"
 
 
 def test_the_quick_start_matches_the_deployment_runbook() -> None:

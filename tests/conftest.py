@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import os
+from collections.abc import AsyncIterator, Iterator
 from decimal import Decimal
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -15,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
 
 # Import models so metadata is complete.
 import app.models  # noqa: F401
+from app.config import Settings
 from app.database.base import Base
 from app.models.category import Category
 from app.models.enums import CityChoice, LanguageCode
@@ -23,6 +26,29 @@ from app.models.user import User
 
 # Shared seeded shop, used by the statistics service and dashboard suites.
 from tests.shop_dataset import shop, stats  # noqa: F401
+
+# --------------------------------------------------------------------------
+# Settings must never inherit the developer's machine.
+#
+# `Settings` declares `env_file=".env"`, so any test that builds one picks up
+# whatever the local `.env` happens to contain for fields it did not set. Two
+# reviews tests asserting "no reviews group is configured" started failing the
+# moment a real `REVIEW_GROUP_CHAT_ID` was added to `.env` — the code was fine,
+# the suite was reading the operator's configuration.
+# --------------------------------------------------------------------------
+_APP_ENV_VARS = tuple(name.upper() for name in Settings.model_fields)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _isolate_settings_from_the_environment() -> Iterator[None]:
+    original = Settings.model_config.get("env_file")
+    Settings.model_config["env_file"] = None
+    saved = {name: os.environ.pop(name) for name in _APP_ENV_VARS if name in os.environ}
+    try:
+        yield
+    finally:
+        Settings.model_config["env_file"] = original
+        os.environ.update(saved)
 
 
 @pytest_asyncio.fixture
